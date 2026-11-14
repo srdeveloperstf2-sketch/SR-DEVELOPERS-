@@ -5,7 +5,7 @@ on:
     paths:
       - 'index.html'
       - 'styles.css'
-      - 'app.js'
+      - 'app.js'\n      - 'auth.js'\n      - 'cloud-sync.js'\n      - 'supabase/**'
       - 'manifest.webmanifest'
       - 'icon.svg'
       - 'package.json'
@@ -34,7 +34,7 @@ jobs:
       - name: Prepare web assets
         run: |
           mkdir -p www
-          cp index.html styles.css app.js manifest.webmanifest icon.svg www/
+          cp index.html styles.css app.js auth.js cloud-sync.js manifest.webmanifest icon.svg www/\n          mkdir -p www/supabase\n          cp supabase/config.js www/supabase/config.js
       - name: Create Android project
         run: npx cap add android
       - name: Sync Android project
