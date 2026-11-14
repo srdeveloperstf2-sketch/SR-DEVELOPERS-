@@ -145,3 +145,5 @@ footer{color:#89948d}
  .panel{padding:19px}
  .stats article{padding:18px}
 }
+
+#inventory .panel,#payments .panel,#partners .panel{margin-bottom:14px}.view .muted{line-height:1.5}.item .tag{margin-left:5px}
