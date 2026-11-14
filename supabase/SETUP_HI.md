@@ -33,3 +33,15 @@ App में Project URL और Publishable key configure हैं, लेक�
 ## App Cloud Sync (required for multiple phones)
 
 After the database setup and Admin profile are created, run `app_cloud_sync_migration.sql` in Supabase SQL Editor. This creates the role-scoped `crm_records` table used by the app to sync CRM modules between signed-in devices. The app will load records allowed by the signed-in user's RLS role and upload that device's existing local records on first sync. Do not use real customer data until the migration has run and a second test account/device has been verified. Current first sync is additive; deleting a local record does not yet propagate a cloud delete.
+
+
+## Staff ID creation: Admin-created + Self-signup request
+
+1. Run `staff_signup_migration.sql` once in Supabase SQL Editor.
+2. Deploy Edge Function `create-staff-login` from `supabase/functions/create-staff-login/index.ts`.
+3. In Supabase → Edge Functions → Secrets, configure `SUPABASE_SERVICE_ROLE_KEY` using the project's service-role secret. Keep it server-side only; never put it in app config or share it in chat. The platform supplies the project URL and anon key to deployed functions in the standard environment.
+4. Admin logs in → Team → Staff Login ID Management. Admin can create a staff login directly or approve a pending self-signup request. A temporary password is generated and shown once.
+5. Staff can use the login screen's “नई ID के लिए Request भेजें” form. This only creates a pending request; it does not grant app access or allow self-assigned Admin roles. Admin approval creates the actual login and profile.
+6. Give the temporary password to the employee privately. Ask them to change it after first login. Do not send passwords in group chats.
+
+Roles available to staff signup: Manager, Team Leader, Sales Executive. Admin role is never self-selectable.
