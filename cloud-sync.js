@@ -9,7 +9,8 @@
     const rows=[];
     for(const [key,type] of Object.entries(types)){
       for(const raw of (db[key]||[])){
-        const item=normalize(raw);
+        if(!raw.id)raw.id=uuid();
+        const item=raw;
         const ownerId=item.owner_id||item.ownerId||user.id;
         rows.push({id:item.id,record_type:type,payload:item,owner_id:ownerId,created_by:item.created_by||user.id,updated_at:new Date().toISOString()});
       }
