@@ -28,3 +28,8 @@
 ## Current limitation
 
 App में Project URL और Publishable key configure हैं, लेकिन database script चलाना, Auth users बनाना और Edge Function deploy करना अभी बाकी है। जब तक ये steps पूरे और test न हों, multi-device shared CRM और broker login को live/production-ready न मानें।
+
+
+## App Cloud Sync (required for multiple phones)
+
+After the database setup and Admin profile are created, run `app_cloud_sync_migration.sql` in Supabase SQL Editor. This creates the role-scoped `crm_records` table used by the app to sync CRM modules between signed-in devices. The app will load records allowed by the signed-in user's RLS role and upload that device's existing local records on first sync. Do not use real customer data until the migration has run and a second test account/device has been verified. Current first sync is additive; deleting a local record does not yet propagate a cloud delete.
