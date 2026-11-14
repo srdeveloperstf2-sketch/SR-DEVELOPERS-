@@ -1,24 +1,30 @@
 # Supabase setup — S.R. Developers CRM
 
-1. Supabase Dashboard → SQL Editor → New query.
-2. Run `schema.sql` completely.
-3. Project Settings → Data API: copy Project URL.
-4. API Keys: copy only the Publishable key (`sb_publishable_...`).
-5. Put these two values in `supabase/config.js` and commit the change.
-6. Authentication → Providers → Email: enable email/password.
-7. Authentication → Users → Add user: create the first Admin login.
-8. Copy that user's UUID. In SQL Editor run:
+## Database setup
+
+**Fresh Supabase project:** सबसे आसान तरीका है कि SQL Editor में [ONE_TIME_SETUP.sql](./ONE_TIME_SETUP.sql) खोलकर पूरा script एक बार Run करें। इसमें base CRM schema, Admin/Manager/Executive access rules और Broker/Channel Partner portal tables शामिल हैं।
+
+**अगर आपने पहले से कोई पुरानी SQL file चला रखी है:** ONE_TIME_SETUP.sql को दोबारा blindly न चलाएँ। पहले बताइए कौन-सी files execute हुई हैं; उसी हिसाब से safe upgrade sequence देंगे।
+
+## Project configuration
+
+1. Supabase Dashboard → Project Settings → Data API से Project URL लें।
+2. API Keys से केवल Publishable key (`sb_publishable_...`) लें।
+3. ये दोनों values `supabase/config.js` में configure करें।
+4. Authentication → Providers → Email में email/password enable करें।
+5. Authentication → Users में पहला Admin user बनाएँ।
+6. उस user की UUID लेकर SQL Editor में चलाएँ:
    `insert into public.profiles(id,full_name,role,is_active) values ('USER_UUID','S.R. Developers Admin','admin',true);`
-9. Create each staff member as an Auth user, then insert a matching profile with role and manager/team_leader IDs.
-10. Test each role using separate accounts before entering real customer data.
-
-IMPORTANT: Never share or paste `sb_secret_` or `service_role` keys. Revoke the secret key accidentally exposed in chat and rotate it.
-
+7. हर कर्मचारी को Auth user बनाकर matching profile दें; role और manager_id सही सेट करें।
+8. Admin, Manager और Executive accounts से अलग-अलग login करके permissions जाँचें। असली ग्राहक डेटा तभी डालें जब tests सफल हों।
 
 ## Broker / Channel Partner Portal
 
-1. पहले ऊपर दिए गए employee CRM setup के बाद SQL Editor में `partner_portal_migration.sql` चलाएँ।
-2. यह `channel_partners`, partner-owned `partner_leads` और `partner_commissions` tables तथा RLS access rules बनाता है।
-3. Broker accounts को Admin approval के बाद ही active करना है। Broker केवल अपनी Partner Leads और अपना Commission देख सकेगा; company/staff records नहीं।
-4. Login ID + temporary password बनाने के लिए secure server-side provisioning endpoint (Supabase Edge Function) चाहिए। यह काम browser/app में `sb_secret_` या `service_role` key रखकर कभी न करें।
-5. Supabase Project URL और Publishable key को `supabase/config.js` में डालना और app में Supabase Auth + Edge Function integration पूरा करना बाकी है। तब तक Broker login को production-ready न मानें।
+- Partner accounts Admin approval से activate होंगे; open self-registration नहीं है।
+- Broker केवल अपनी Partner Leads और अपनी Commission देख सकेगा; दूसरे brokers या company-wide staff records नहीं।
+- Secure login provisioning के लिए `supabase/functions/create-partner-login` Edge Function deploy करनी होगी और server-side secrets Supabase Function Secrets में रखने होंगे।
+- कभी भी `sb_secret_` या `service_role` key को app या `config.js` में न रखें। यदि ऐसी secret key पहले साझा हुई थी, Supabase Dashboard में उसे revoke/rotate करें।
+
+## Current limitation
+
+App में Project URL और Publishable key configure हैं, लेकिन database script चलाना, Auth users बनाना और Edge Function deploy करना अभी बाकी है। जब तक ये steps पूरे और test न हों, multi-device shared CRM और broker login को live/production-ready न मानें।
