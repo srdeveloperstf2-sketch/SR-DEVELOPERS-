@@ -86,7 +86,7 @@ with check (created_by=auth.uid() and (public.is_admin() or public.is_manager())
 -- Team messages: admin and managers can see all company updates; executives see only their own messages.
 drop policy if exists messages_read on public.team_messages;
 create policy messages_read on public.team_messages for select to authenticated
-using (public.is_admin() or public.is_manager() or sender_id=auth.uid());
+using (public.is_admin() or sender_id=auth.uid() or exists(select 1 from public.profiles p where p.id=sender_id and p.manager_id=auth.uid() and public.is_manager()));
 
 -- Call activity for auditable call reporting (manual log; phone dialer integration is separate).
 create table if not exists public.call_logs (
@@ -127,3 +127,22 @@ create index if not exists followups_due_at_idx on public.followups(due_at);
 create index if not exists site_visits_scheduled_at_idx on public.site_visits(scheduled_at);
 create index if not exists bookings_booking_date_idx on public.bookings(booking_date);
 create index if not exists call_logs_called_at_idx on public.call_logs(called_at);
+
+-- Per-employee activity totals. security_invoker ensures underlying RLS is applied.
+create or replace view public.employee_activity_summary
+with (security_invoker=true) as
+select
+ p.id as employee_id,
+ p.full_name,
+ p.role,
+ count(distinct l.id) filter (where l.id is not null) as assigned_leads,
+ (select count(*) from public.call_logs cl where cl.caller_id=p.id) as calls_logged,
+ (select count(*) from public.followups f join public.leads fl on fl.id=f.lead_id where f.created_by=p.id and public.can_access_lead(fl.id)) as followups_logged,
+ (select count(*) from public.site_visits sv join public.leads sl on sl.id=sv.lead_id where sv.created_by=p.id and public.can_access_lead(sl.id)) as site_visits_logged,
+ (select count(*) from public.bookings b join public.leads bl on bl.id=b.lead_id where b.created_by=p.id and public.can_access_lead(bl.id)) as bookings_logged
+from public.profiles p
+left join public.leads l on l.assigned_to=p.id
+where p.is_active=true
+group by p.id,p.full_name,p.role;
+
+grant select on public.employee_activity_summary to authenticated;
