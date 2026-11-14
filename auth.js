@@ -46,17 +46,17 @@
     b.disabled=false;b.textContent='नई ID के लिए Request भेजें';
   });
   async function initStaffAdmin(){
-    const manager=document.getElementById('accountManager');
     const {data}=await client.from('profiles').select('id,full_name').eq('role','manager').eq('is_active',true).order('full_name');
-    manager.innerHTML='<option value="">कोई नहीं / लागू नहीं</option>'+(data||[]).map(x=>'<option value="'+x.id+'">'+x.full_name.replace(/[&<>"]/g,'')+'</option>').join('');
+    window.srActiveManagers=data||[];
     await loadSignupRequests();
   }
   async function loadSignupRequests(){
     const target=document.getElementById('signupRequestList');if(!target)return;
     const {data,error}=await client.from('staff_signup_requests').select('*').eq('status','pending').order('created_at',{ascending:false});
     if(error){target.textContent='Requests नहीं खुलीं: '+error.message;return}
-    target.innerHTML=(data||[]).map(x=>'<div class="item"><b>'+x.full_name.replace(/[&<>"]/g,'')+'</b><small>'+x.email+' · '+(x.phone||'मोबाइल नहीं')+' · '+x.requested_role+'</small><p>'+((x.message||'').replace(/[&<>"]/g,''))+'</p><button class="tiny" data-approve="'+x.id+'">Approve करके ID बनाएं</button></div>').join('')||'<p class="muted">कोई Pending Request नहीं।</p>';
-    target.querySelectorAll('[data-approve]').forEach(b=>b.onclick=()=>approveSignup(b.dataset.approve));
+    const managers=window.srActiveManagers||[];
+    target.innerHTML=(data||[]).map(x=>'<div class="item"><b>'+x.full_name.replace(/[&<>"]/g,'')+'</b><small>'+x.email+' · '+(x.phone||'मोबाइल नहीं')+' · Requested: '+x.requested_role+'</small><p>'+((x.message||'').replace(/[&<>"]/g,''))+'</p><label>Admin द्वारा स्वीकृत पद<select data-role="'+x.id+'"><option value="sales_executive">Sales Executive</option><option value="team_leader">Team Leader</option><option value="manager">Manager</option></select></label><label>Reporting Manager<select data-manager="'+x.id+'"><option value="">कोई नहीं</option>'+managers.map(m=>'<option value="'+m.id+'">'+m.full_name.replace(/[&<>"]/g,'')+'</option>').join('')+'</select></label><button class="tiny" data-approve="'+x.id+'">Approve करके ID बनाएं</button><button class="tiny secondary" data-reject="'+x.id+'">Reject</button></div>').join('')||'<p class="muted">कोई Pending Request नहीं।</p>';
+    target.querySelectorAll('[data-approve]').forEach(b=>b.onclick=()=>approveSignup(b.dataset.approve));\n    target.querySelectorAll('[data-reject]').forEach(b=>b.onclick=()=>rejectSignup(b.dataset.reject));
   }
   async function createStaff(payload){
     const {data,error}=await client.functions.invoke('create-staff-login',{body:payload});
@@ -69,18 +69,12 @@
     target.innerHTML='<div class="credential-box"><b>Login ID बन गई</b><p>Name: '+data.fullName+'</p><p>Email: '+data.email+'</p><p>Role: '+data.role+'</p><p>Temporary Password: <strong>'+data.temporaryPassword+'</strong></p><button type="button" id="copyStaffCredentials" class="tiny secondary">Credentials Copy करें</button><p>यह Password कर्मचारी को सुरक्षित तरीके से दें और पहली Login के बाद बदलवाएँ।</p></div>';
     document.getElementById('copyStaffCredentials').onclick=()=>navigator.clipboard?.writeText('Email: '+data.email+'\nTemporary Password: '+data.temporaryPassword);
   }
-  document.getElementById('createStaffAccountForm').addEventListener('submit',async e=>{
-    e.preventDefault();const b=e.submitter;b.disabled=true;
-    try{const data=await createStaff({fullName:document.getElementById('accountName').value.trim(),email:document.getElementById('accountEmail').value.trim(),phone:document.getElementById('accountPhone').value.trim(),role:document.getElementById('accountRole').value,managerId:document.getElementById('accountManager').value||null});showCreatedAccount(data);e.target.reset();}
-    catch(err){document.getElementById('staffAccountResult').textContent='ID नहीं बनी: '+err.message;}
-    b.disabled=false;
-  });
   async function approveSignup(requestId){
     const {data:requests}=await client.from('staff_signup_requests').select('*').eq('id',requestId).maybeSingle();if(!requests)return;
-    try{const data=await createStaff({requestId,fullName:requests.full_name,email:requests.email,phone:requests.phone,role:requests.requested_role});showCreatedAccount(data);await loadSignupRequests();}
+    try{const role=document.querySelector('[data-role=\"'+requestId+'\"]').value;const managerId=document.querySelector('[data-manager=\"'+requestId+'\"]').value||null;const data=await createStaff({requestId,fullName:requests.full_name,email:requests.email,phone:requests.phone,role,managerId});showCreatedAccount(data);await loadSignupRequests();}
     catch(err){setState('Approval failed: '+err.message,true);}
   }
-  document.getElementById('refreshSignupRequests').addEventListener('click',loadSignupRequests);
+  async function rejectSignup(requestId){const {error}=await client.from('staff_signup_requests').update({status:'rejected',reviewed_by:user.id,reviewed_at:new Date().toISOString()}).eq('id',requestId).eq('status','pending');if(error)setState('Reject नहीं हुआ: '+error.message,true);else await loadSignupRequests();}\n  document.getElementById('refreshSignupRequests').addEventListener('click',loadSignupRequests);
 \n  client.auth.onAuthStateChange((_event,session)=>{ if(session) setTimeout(()=>verifySession(session),0); else showGate(); });
   client.auth.getSession().then(({data})=>verifySession(data.session));
   form.addEventListener('submit',async e=>{
