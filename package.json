@@ -1,0 +1,16 @@
+{
+  "name": "sr-developers-crm-android",
+  "version": "1.0.0",
+  "private": true,
+  "description": "S.R. Developers Real Estate CRM Android wrapper",
+  "scripts": {
+    "build": "node -e \"console.log('Static web assets are packaged by the Android workflow')\""
+  },
+  "dependencies": {
+    "@capacitor/android": "^7.4.3",
+    "@capacitor/core": "^7.4.3"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^7.4.3"
+  }
+}
