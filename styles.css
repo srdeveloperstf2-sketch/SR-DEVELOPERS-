@@ -2,3 +2,54 @@
 nav{scrollbar-width:thin}nav button{border-radius:22px;box-shadow:0 1px 2px #0c3b2410}.panel{box-shadow:0 5px 18px #153e2710}.stats article{box-shadow:0 3px 12px #153e2708}.welcome h1{letter-spacing:-.5px}button{cursor:pointer;transition:filter .15s,transform .15s}button:active{transform:scale(.98)}.secondary{border:1px solid #cfe1d4}#attendanceForm button{min-height:46px}
 #leadForm{gap:12px}#leadForm label{font-weight:600}#leadForm input,#leadForm select,#leadForm textarea{font-weight:400}#leadForm .wide{grid-column:1/-1}.panelhead h2{white-space:nowrap}
 .contact-actions{display:flex;gap:8px;margin:8px 0}.contact-actions a{display:inline-block;text-decoration:none;background:#eaf4ed;color:#126b45;border-radius:8px;padding:7px 11px;font-size:12px;font-weight:700}.contact-actions a:first-child{background:#126b45;color:#fff}#sharing .panel{margin-bottom:14px}#sharing form button{min-height:44px}
+
+
+/* S.R. Developers — vibrant modern CRM theme */
+:root{
+  --ink:#17233b;--muted:#71809a;--line:#e5eaf4;--surface:#ffffff;
+  --navy:#172554;--blue:#3568f5;--teal:#0eaa9a;--purple:#8057e8;
+  --orange:#f59b38;--pink:#ed5c91;--bg:#f3f6fc;
+}
+body{background:radial-gradient(ellipse at 8% 0%,#e4edff 0,transparent 34%),radial-gradient(ellipse at 95% 8%,#fce8f1 0,transparent 28%),var(--bg);color:var(--ink)}
+header{background:linear-gradient(112deg,#172554 0%,#263f83 52%,#4b42a8 100%);color:#fff;border:0;box-shadow:0 8px 24px #17255430}
+.brand .mark{background:linear-gradient(135deg,#ffb44d,#f06b78);color:#fff;border:1px solid #ffffff55;box-shadow:0 4px 12px #0002}
+.brand small{color:#cbd7ff}
+.pill{background:#ffffff20;color:#fff;border:1px solid #ffffff35}
+main{padding-top:19px}
+.welcome{padding:17px 5px 18px}
+.welcome p{color:#526ff0;letter-spacing:2.3px}
+.welcome h1{font-size:clamp(26px,5vw,34px);font-weight:850;letter-spacing:-1px;background:linear-gradient(90deg,#172554,#405ee4 55%,#9256d9);-webkit-background-clip:text;background-clip:text;color:transparent}
+.welcome span,.muted{color:var(--muted)}
+.warning{background:linear-gradient(110deg,#fff7e8,#fff0f4);border:1px solid #f6d8c4;color:#89531e;box-shadow:0 5px 18px #c77a2610}
+nav{background:#f3f6fcdd;backdrop-filter:blur(12px);top:60px;padding:12px 0}
+nav button{background:#fff;color:#53617c;border:1px solid #e3e8f3;border-radius:24px;box-shadow:0 3px 10px #25365b0d}
+nav button.active{background:linear-gradient(110deg,#3568f5,#8057e8);color:#fff;border-color:transparent;box-shadow:0 5px 14px #5269dc45}
+.stats{gap:11px}
+.stats article,.panel{background:linear-gradient(160deg,#fff,#fbfcff);border:1px solid #e7ebf5;border-radius:18px;box-shadow:0 7px 22px #27385f0c}
+.stats article{position:relative;overflow:hidden;padding:16px}
+.stats article:after{content:"";position:absolute;width:74px;height:74px;border-radius:50%;right:-24px;top:-25px;background:var(--orb,#e8efff);opacity:.85}
+.stats article:nth-child(1){--orb:#dce8ff}.stats article:nth-child(2){--orb:#d8f7ee}.stats article:nth-child(3){--orb:#f0e5ff}.stats article:nth-child(4){--orb:#ffe8d8}
+.stats small{color:#68758e;font-weight:650;position:relative;z-index:1}
+.stats strong{font-size:29px;color:#315de0;position:relative;z-index:1}
+.stats article:nth-child(2) strong{color:#079b80}.stats article:nth-child(3) strong{color:#8057e8}.stats article:nth-child(4) strong{color:#e58a2b}
+.panel{padding:16px;margin-top:14px}
+.panel h2{color:#1d2b4a;font-weight:800;letter-spacing:-.25px}
+.panelhead h2{color:#1d2b4a}
+label{color:#53617b;font-weight:600}
+input,select,textarea{border:1px solid #dce3f0;border-radius:11px;background:#fff;color:#1b2946;transition:border-color .15s,box-shadow .15s}
+input:focus,select:focus,textarea:focus{outline:none;border-color:#6484f7;box-shadow:0 0 0 3px #6484f71c}
+button{background:linear-gradient(110deg,#3568f5,#6457e8);color:#fff;border-radius:11px;box-shadow:0 4px 11px #3c5fd52b}
+button:hover{filter:brightness(1.05)}
+.quick button:nth-child(2){background:linear-gradient(110deg,#08a98e,#27c6a4)}
+.quick button:nth-child(3){background:linear-gradient(110deg,#8057e8,#a06ae9)}
+.quick button:nth-child(4){background:linear-gradient(110deg,#ef9237,#f4b14b)}
+.secondary{background:#edf2ff;color:#365bd1;border:1px solid #dce5ff;box-shadow:none}
+.danger{background:#fff0f2;color:#c13e60;box-shadow:none}
+.tag{background:#e9f0ff;color:#385bd1}
+.item{border-bottom:1px solid #edf0f7}
+.item b{color:#202e4b}
+.item small{color:#7a879f}
+.contact-actions a{background:#e7f8f2;color:#07886f}
+.contact-actions a:first-child{background:linear-gradient(110deg,#08a98e,#27c6a4);color:#fff}
+footer{color:#8994aa}
+@media(min-width:650px){main{padding-left:22px;padding-right:22px}.panel{padding:20px}.stats article{padding:19px}}
