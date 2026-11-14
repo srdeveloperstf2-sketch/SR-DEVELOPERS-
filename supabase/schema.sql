@@ -89,7 +89,8 @@ insert into public.projects(name,location,status) values
 ('Ayodhya Project','Darshan Nagar Rasoolabad Road, Ayodhya, Uttar Pradesh','active'),
 ('Banchari Project','Between Palwal and Hodal, Haryana','active'),
 ('Sondh Project','Near Hodal, Haryana','active'),
-('Aurangabad (Delivered)','Palwal, Haryana','delivered')
+('Aurangabad (Delivered)','Palwal, Haryana','delivered'),
+('Galaxy 1 (IMT Sohna)','IMT Sohna, Gurugram, Haryana','active')
 on conflict(name) do nothing;
 
 create or replace function public.current_role() returns text language sql stable security definer set search_path=public as $$
@@ -147,3 +148,14 @@ create policy messages_insert on public.team_messages for insert to authenticate
 
 grant usage on schema public to authenticated;
 grant select,insert,update,delete on public.profiles,public.projects,public.leads,public.followups,public.site_visits,public.bookings,public.targets,public.team_messages to authenticated;
+
+
+create table if not exists public.attendance (id uuid primary key default gen_random_uuid(), user_id uuid not null references public.profiles(id), attendance_date date not null default current_date, check_in timestamptz, check_out timestamptz, notes text, created_at timestamptz not null default now(), unique(user_id,attendance_date), check(check_out is null or check_in is not null), check(check_out is null or check_out >= check_in));
+alter table public.attendance enable row level security;
+drop policy if exists attendance_read_scope on public.attendance;
+create policy attendance_read_scope on public.attendance for select to authenticated using (public.current_role()='admin' or user_id=auth.uid() or public.can_access_profile(user_id));
+drop policy if exists attendance_insert_self on public.attendance;
+create policy attendance_insert_self on public.attendance for insert to authenticated with check(user_id=auth.uid());
+drop policy if exists attendance_update_scope on public.attendance;
+create policy attendance_update_scope on public.attendance for update to authenticated using (public.current_role()='admin' or user_id=auth.uid()) with check(public.current_role()='admin' or user_id=auth.uid());
+grant select,insert,update on public.attendance to authenticated;
