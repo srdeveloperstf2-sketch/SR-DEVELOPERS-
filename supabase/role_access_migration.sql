@@ -108,8 +108,8 @@ create policy call_logs_insert_self on public.call_logs for insert to authentica
 with check (caller_id=auth.uid() and public.can_access_lead(lead_id));
 drop policy if exists call_logs_update_self on public.call_logs;
 create policy call_logs_update_self on public.call_logs for update to authenticated
-using (caller_id=auth.uid() or public.is_admin())
-with check (caller_id=auth.uid() or public.is_admin());
+using ((caller_id=auth.uid() or public.is_admin()) and public.can_access_lead(lead_id))
+with check ((caller_id=auth.uid() or public.is_admin()) and public.can_access_lead(lead_id));
 drop policy if exists call_logs_delete_admin on public.call_logs;
 create policy call_logs_delete_admin on public.call_logs for delete to authenticated
 using (public.is_admin());
