@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 300" role="img" aria-label="S.R. Developers logo">
+<rect width="760" height="300" rx="18" fill="#fff"/>
+<g font-family="Georgia,serif" font-weight="700" fill="#ed1c2e"><text x="28" y="150" font-size="150" letter-spacing="-8">S.R.</text></g>
+<g fill="none" stroke="#087b43" stroke-width="18" stroke-linejoin="miter"><path d="M350 112 L505 8 L620 112 L720 112"/><path d="M625 110 V22 H670 V68"/></g>
+<g fill="#ed1c2e"><rect x="530" y="95" width="33" height="34"/><rect x="572" y="95" width="33" height="34"/><rect x="614" y="95" width="33" height="34"/><rect x="530" y="137" width="33" height="34"/><rect x="572" y="137" width="33" height="34"/><rect x="614" y="137" width="33" height="34"/></g>
+<text x="28" y="235" font-family="Arial,sans-serif" font-size="70" font-weight="700" letter-spacing="5" fill="#087b43">DEVELOPERS</text>
+<path d="M125 264 C280 235 530 238 700 265 C530 247 330 264 205 286 C175 292 145 282 125 264Z" fill="#087b43"/>
+<circle cx="190" cy="278" r="13" fill="#ed1c2e"/>
+</svg>
