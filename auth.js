@@ -74,7 +74,7 @@
     try{const role=document.querySelector('[data-role=\"'+requestId+'\"]').value;const managerId=document.querySelector('[data-manager=\"'+requestId+'\"]').value||null;const data=await createStaff({requestId,fullName:requests.full_name,email:requests.email,phone:requests.phone,role,managerId});showCreatedAccount(data);await loadSignupRequests();}
     catch(err){setState('Approval failed: '+err.message,true);}
   }
-  async function rejectSignup(requestId){const {error}=await client.from('staff_signup_requests').update({status:'rejected',reviewed_by:user.id,reviewed_at:new Date().toISOString()}).eq('id',requestId).eq('status','pending');if(error)setState('Reject नहीं हुआ: '+error.message,true);else await loadSignupRequests();}\n  document.getElementById('refreshSignupRequests').addEventListener('click',loadSignupRequests);
+  async function rejectSignup(requestId){const {data:authData}=await client.auth.getUser();const {error}=await client.from('staff_signup_requests').update({status:'rejected',reviewed_by:authData.user.id,reviewed_at:new Date().toISOString()}).eq('id',requestId).eq('status','pending');if(error)setState('Reject नहीं हुआ: '+error.message,true);else await loadSignupRequests();}\n  document.getElementById('refreshSignupRequests').addEventListener('click',loadSignupRequests);
 \n  client.auth.onAuthStateChange((_event,session)=>{ if(session) setTimeout(()=>verifySession(session),0); else showGate(); });
   client.auth.getSession().then(({data})=>verifySession(data.session));
   form.addEventListener('submit',async e=>{
