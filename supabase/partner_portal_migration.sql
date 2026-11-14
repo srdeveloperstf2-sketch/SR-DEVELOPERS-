@@ -61,9 +61,25 @@ drop policy if exists leads_read_scope on public.leads;
 create policy leads_read_scope on public.leads for select to authenticated
 using (public.is_admin() or public.can_access_lead(id) or
  (public.is_partner() and channel_partner_id=public.current_partner_id()));
-drop policy if exists leads_partner_insert on public.leads;
-create policy leads_partner_insert on public.leads for insert to authenticated
-with check (public.is_partner() and channel_partner_id=public.current_partner_id() and created_by is null);
+-- Separate partner-submitted enquiry table: partner accounts are not staff profiles.
+create table if not exists public.partner_leads (
+ id uuid primary key default gen_random_uuid(),
+ partner_id uuid not null references public.channel_partners(id),
+ customer_name text not null,
+ phone text not null,
+ project_name text,
+ requirement text,
+ budget numeric(14,2),
+ notes text,
+ status text not null default 'new' check(status in ('new','contacted','qualified','site_visit','booked','lost')),
+ created_at timestamptz not null default now()
+);
+create index if not exists partner_leads_partner_idx on public.partner_leads(partner_id);
+alter table public.partner_leads enable row level security;
+drop policy if exists partner_leads_own_access on public.partner_leads;
+create policy partner_leads_own_access on public.partner_leads for all to authenticated
+using (public.is_admin() or (public.is_partner() and partner_id=public.current_partner_id()))
+with check (public.is_admin() or (public.is_partner() and partner_id=public.current_partner_id()));
 
 drop policy if exists partner_commissions_read on public.partner_commissions;
 create policy partner_commissions_read on public.partner_commissions for select to authenticated
@@ -72,6 +88,5 @@ drop policy if exists partner_commissions_admin_write on public.partner_commissi
 create policy partner_commissions_admin_write on public.partner_commissions for all to authenticated
 using (public.is_admin()) with check (public.is_admin());
 
-grant select on public.channel_partners, public.partner_commissions to authenticated;
-grant insert,update,delete on public.channel_partners, public.partner_commissions to authenticated;
-grant insert on public.leads to authenticated;
+grant select on public.channel_partners, public.partner_commissions, public.partner_leads to authenticated;
+grant insert,update,delete on public.channel_partners, public.partner_commissions, public.partner_leads to authenticated;
