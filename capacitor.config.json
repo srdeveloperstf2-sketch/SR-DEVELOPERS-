@@ -1,0 +1,8 @@
+{
+  "appId": "in.srdevelopers.crm",
+  "appName": "S.R. DEVELOPERS CRM",
+  "webDir": "www",
+  "android": {
+    "allowMixedContent": false
+  }
+}
