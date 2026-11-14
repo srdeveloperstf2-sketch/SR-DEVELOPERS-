@@ -25,7 +25,7 @@
     if(!session){showGate();return}
     const {data,error}=await client.from('profiles').select('full_name,role,is_active').eq('id',session.user.id).maybeSingle();
     if(error || !data || !data.is_active){await client.auth.signOut();showGate();setState('इस User की सक्रिय कर्मचारी Profile नहीं मिली। Admin से संपर्क करें।',true);return}
-    showApp(session.user,data);
+    try { const sync=await window.srCloudInit(client,session.user,data); showApp(session.user,data); setState('Cloud sync जुड़ा है · '+sync.loaded+' रिकॉर्ड लोड · '+sync.uploaded+' अपलोड'); } catch(syncError) { showGate(); setState('Cloud Sync शुरू नहीं हुआ: '+syncError.message+' — Admin से संपर्क करें।',true); }
   }
   client.auth.onAuthStateChange((_event,session)=>{ if(session) setTimeout(()=>verifySession(session),0); else showGate(); });
   client.auth.getSession().then(({data})=>verifySession(data.session));
