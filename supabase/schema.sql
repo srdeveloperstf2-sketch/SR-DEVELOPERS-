@@ -159,3 +159,18 @@ create policy attendance_insert_self on public.attendance for insert to authenti
 drop policy if exists attendance_update_scope on public.attendance;
 create policy attendance_update_scope on public.attendance for update to authenticated using (public.current_role()='admin' or user_id=auth.uid()) with check(public.current_role()='admin' or user_id=auth.uid());
 grant select,insert,update on public.attendance to authenticated;
+
+-- Customer enquiry qualification fields (safe to run on existing installations)
+alter table public.leads add column if not exists min_budget numeric;
+alter table public.leads add column if not exists whatsapp text;
+alter table public.leads add column if not exists city text;
+alter table public.leads add column if not exists full_address text;
+alter table public.leads add column if not exists occupation text;
+alter table public.leads add column if not exists company_name text;
+alter table public.leads add column if not exists property_type text;
+alter table public.leads add column if not exists required_size text;
+alter table public.leads add column if not exists purchase_purpose text;
+alter table public.leads add column if not exists purchase_timeline text;
+alter table public.leads add column if not exists payment_preference text;
+alter table public.leads add column if not exists priority text not null default 'warm';
+alter table public.leads add column if not exists campaign text;
