@@ -23,6 +23,28 @@
     setState('Supabase configuration missing. Admin से संपर्क करें।',true); return;
   }
   const client=window.supabase.createClient(cfg.url,cfg.publishableKey);
+
+  // Forgot-password flow: send a Supabase recovery link to the entered email.
+  const forgotButton=document.createElement('button');
+  forgotButton.type='button';
+  forgotButton.id='forgotPasswordButton';
+  forgotButton.className='tiny secondary';
+  forgotButton.textContent='Password भूल गए?';
+  const loginForm=document.getElementById('loginForm');
+  const loginSubmit=document.getElementById('loginButton');
+  if(loginForm && loginSubmit) loginSubmit.insertAdjacentElement('afterend',forgotButton);
+  forgotButton.addEventListener('click',async()=>{
+    const email=document.getElementById('loginEmail').value.trim().toLowerCase();
+    if(!email){setState('पहले अपना Registered Email भरें, फिर Password भूल गए? दबाएँ।',true);document.getElementById('loginEmail').focus();return;}
+    forgotButton.disabled=true;forgotButton.textContent='लिंक भेजा जा रहा है…';
+    try{
+      const redirectTo=window.location.origin+window.location.pathname;
+      const {error}=await client.auth.resetPasswordForEmail(email,{redirectTo});
+      if(error) throw error;
+      setState('यदि यह Email अकाउंट में Registered है, तो Password Reset लिंक भेज दिया गया है। Inbox और Spam फ़ोल्डर देखें।');
+    }catch(err){setState('Reset लिंक नहीं भेजा गया: '+(err?.message||String(err)),true);}
+    finally{forgotButton.disabled=false;forgotButton.textContent='Password भूल गए?';}
+  });
   window.srSupabase=client;
 
   // Self-service password change for every authenticated staff member.
