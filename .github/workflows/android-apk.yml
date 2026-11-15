@@ -10,7 +10,7 @@ on:
       - 'app.js'
       - 'auth.js'
       - 'partner.html'
-      - 'partner.js'
+      - 'partner.js'\n      - 'partner-admin.js'
       - 'cloud-sync.js'
       - 'supabase/**'
       - 'manifest.webmanifest'
@@ -41,7 +41,7 @@ jobs:
       - name: Prepare web assets
         run: |
           mkdir -p www
-          cp index.html partner.html styles.css staff-control.css staff-control.js app.js auth.js partner.js cloud-sync.js manifest.webmanifest icon.svg www/
+          cp index.html partner.html styles.css staff-control.css staff-control.js app.js auth.js partner.js partner-admin.js cloud-sync.js manifest.webmanifest icon.svg www/
           mkdir -p www/supabase
           cp supabase/config.js www/supabase/config.js
       - name: Create Android project
