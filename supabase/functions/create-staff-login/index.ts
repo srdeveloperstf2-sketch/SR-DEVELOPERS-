@@ -156,12 +156,18 @@ Deno.serve(async (req: Request) => {
 
     const fullName = String(requestRow.full_name ?? "").trim();
     const email = String(requestRow.email ?? "").trim().toLowerCase();
-    const phone = String(requestRow.phone ?? "").trim();
+    const rawPhone = String(requestRow.phone ?? "").trim();
+    const digits = rawPhone.replace(/\\D/g, "");
+    const phone = digits.length === 10 ? "+91" + digits
+      : digits.length === 12 && digits.startsWith("91") ? "+" + digits
+      : rawPhone.startsWith("+") && digits.length >= 8 && digits.length <= 15 ? "+" + digits
+      : "";
     if (
       fullName.length < 2 || fullName.length > 100 ||
-      !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 254
+      !/^[^\\s@]+@[^\\s@]+\\.[^\\s@]{2,}$/.test(email) || email.length > 254 ||
+      !phone
     ) {
-      return json(req, { error: "Signup request contains invalid name or email" }, 400);
+      return json(req, { error: "Valid name, email and mobile number are required. Use a 10-digit Indian mobile or E.164 number." }, 400);
     }
 
     if (managerId) {
@@ -186,8 +192,10 @@ Deno.serve(async (req: Request) => {
     const password = temporaryPassword();
     const { data: created, error: createError } = await admin.auth.admin.createUser({
       email,
+      phone,
       password,
       email_confirm: true,
+      phone_confirm: false,
       user_metadata: { full_name: fullName, account_type: "staff" },
     });
     if (createError || !created.user) {
@@ -216,6 +224,17 @@ Deno.serve(async (req: Request) => {
     }
     profileCreated = true;
 
+    const { data: identityProfile, error: identityError } = await admin
+      .from("profiles").select("employee_code").eq("id", created.user.id).single();
+    if (identityError || !identityProfile?.employee_code) {
+      console.error("Employee code assignment failed", identityError?.message ?? "No employee code returned");
+      await admin.from("profiles").delete().eq("id", created.user.id);
+      await admin.auth.admin.deleteUser(created.user.id);
+      createdUserId = null;
+      profileCreated = false;
+      return json(req, { error: "Employee ID could not be assigned. Run employee_identity_migration.sql and retry." }, 500);
+    }
+
     const { data: approved, error: approvalError } = await admin
       .from("staff_signup_requests")
       .update({
@@ -243,6 +262,8 @@ Deno.serve(async (req: Request) => {
       role,
       managerId,
       requestId,
+      employeeCode: identityProfile.employee_code,
+      phone,
       temporaryPassword: password,
       message: "Save this password now. It will not be returned again.",
     });
