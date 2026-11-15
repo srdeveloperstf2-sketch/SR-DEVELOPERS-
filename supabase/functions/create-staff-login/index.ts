@@ -157,14 +157,14 @@ Deno.serve(async (req: Request) => {
     const fullName = String(requestRow.full_name ?? "").trim();
     const email = String(requestRow.email ?? "").trim().toLowerCase();
     const rawPhone = String(requestRow.phone ?? "").trim();
-    const digits = rawPhone.replace(/\\D/g, "");
+    const digits = rawPhone.replace(/\D/g, "");
     const phone = digits.length === 10 ? "+91" + digits
       : digits.length === 12 && digits.startsWith("91") ? "+" + digits
       : rawPhone.startsWith("+") && digits.length >= 8 && digits.length <= 15 ? "+" + digits
       : "";
     if (
       fullName.length < 2 || fullName.length > 100 ||
-      !/^[^\\s@]+@[^\\s@]+\\.[^\\s@]{2,}$/.test(email) || email.length > 254 ||
+      !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email) || email.length > 254 ||
       !phone
     ) {
       return json(req, { error: "Valid name, email and mobile number are required. Use a 10-digit Indian mobile or E.164 number." }, 400);
