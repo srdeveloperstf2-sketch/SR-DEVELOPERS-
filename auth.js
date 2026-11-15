@@ -151,7 +151,7 @@
     if(!session){showGate();return}
     if(verificationInFlight) return verificationInFlight;
     verificationInFlight=(async()=>{
-    const {data,error}=await client.from('profiles').select('full_name,role,is_active').eq('id',session.user.id).maybeSingle();
+    const {data,error}=await client.from('profiles').select('full_name,role,is_active,employee_code').eq('id',session.user.id).maybeSingle();
     if(error || !data || !data.is_active){await client.auth.signOut();showGate();setState('इस User की सक्रिय कर्मचारी Profile नहीं मिली। Admin से संपर्क करें।',true);return}
     try {
       if(typeof window.srCloudInit!=='function') throw new Error('Cloud sync module लोड नहीं हुआ। पेज refresh करें।');
@@ -187,13 +187,13 @@
     b.disabled=false;b.textContent='नई ID के लिए Request भेजें';
   });
   async function loadVisibleTeamProfiles(){
-    const {data,error}=await client.from('profiles').select('id,full_name,role,phone,manager_id,is_active').eq('is_active',true).order('full_name');
+    const {data,error}=await client.from('profiles').select('id,employee_code,full_name,role,phone,manager_id,is_active').eq('is_active',true).order('full_name');
     if(error){console.warn('Team directory profile load:',error.message);return;}
     window.srVisibleProfiles=data||[];
     window.srSetProfiles?.(window.srVisibleProfiles);
   }
   async function initStaffAdmin(){
-    const {data,error}=await client.from('profiles').select('id,full_name,role,phone,manager_id,is_active').eq('is_active',true).order('full_name');
+    const {data,error}=await client.from('profiles').select('id,employee_code,full_name,role,phone,manager_id,is_active').eq('is_active',true).order('full_name');
     if(error) console.warn('Could not load staff profiles:',error.message);
     window.srVisibleProfiles=data||[];
     window.srActiveManagers=(data||[]).filter(p=>['manager','team_leader'].includes(p.role));
