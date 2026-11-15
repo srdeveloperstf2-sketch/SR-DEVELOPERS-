@@ -27,12 +27,14 @@ $('bookingList').innerHTML=list('bookings',x=>'<b>'+esc(nameOf(x.lead))+'</b><sm
 $('staffList').innerHTML=db.staff.map(x=>'<div class="item"><b>'+esc(x.name)+' <span class="tag">'+esc(x.role)+'</span></b><small>'+esc(x.phone)+' · Monthly booking target: '+esc(x.target)+'</small></div>').join('')||'<p class="muted">Staff records अभी नहीं हैं।</p>';
 $('messageList').innerHTML=db.messages.slice().reverse().map(x=>'<div class="item">'+esc(x.text)+'<small>'+esc(x.at)+'</small></div>').join('');$('attendanceList').innerHTML=db.attendance.slice().reverse().map(x=>'<div class="item"><b>'+esc(db.staff.find(s=>s.id===x.staff)?.name||'Staff')+'</b><small>'+esc(x.date)+' · In: '+esc(x.in||'—')+' · Out: '+esc(x.out||'—')+'</small></div>').join('')||'<p class="muted">Attendance अभी दर्ज नहीं है।</p>';
 const staffRows=(db.staff||[]).filter(x=>x.active!==false).map(st=>{
- const assignedLeads=db.leads.filter(l=>String(l.assigned||'').trim().toLowerCase()===String(st.name||'').trim().toLowerCase()||l.owner_id===st.id||l.ownerId===st.id);
+ const staffName=String(st.name||'').trim().toLowerCase();
+ const assignedLeads=db.leads.filter(l=>String(l.assigned||'').trim().toLowerCase()===staffName||l.owner_id===st.id||l.ownerId===st.id);
  const ids=new Set(assignedLeads.map(l=>l.id));
- const calls=db.callLogs.filter(c=>ids.has(c.lead)).length;
- const follow=db.followups.filter(f=>ids.has(f.lead)).length;
- const visits=db.visits.filter(v=>ids.has(v.lead)).length;
- const bookings=db.bookings.filter(b=>ids.has(b.lead)).length;
+ let calls=0,follow=0,visits=0,bookings=0;
+ for(const x of db.callLogs)if(ids.has(x.lead))calls++;
+ for(const x of db.followups)if(ids.has(x.lead))follow++;
+ for(const x of db.visits)if(ids.has(x.lead))visits++;
+ for(const x of db.bookings)if(ids.has(x.lead))bookings++;
  return '<tr><td>'+esc(st.name)+'</td><td>'+esc(st.role)+'</td><td>'+assignedLeads.length+'</td><td>'+calls+'</td><td>'+follow+'</td><td>'+visits+'</td><td>'+bookings+'</td></tr>';
  }).join('');
 $('reportStats').innerHTML='<p>Total Leads: <b>'+db.leads.length+'</b></p><p>Call attempts (dialer opened): <b>'+db.callLogs.length+'</b></p><p>Follow-ups: <b>'+db.followups.length+'</b></p><p>Site Visits: <b>'+db.visits.length+'</b></p><p>Bookings: <b>'+db.bookings.length+'</b></p><p>Staff: <b>'+db.staff.length+'</b></p><h3>कर्मचारी-wise Performance</h3><div class="table-wrap"><table><thead><tr><th>कर्मचारी</th><th>पद</th><th>Leads</th><th>Call Attempts</th><th>Follow-ups</th><th>Visits</th><th>Bookings</th></tr></thead><tbody>'+staffRows+'</tbody></table></div><p class="muted">Calls का अर्थ CRM से Dialer खोला गया है; connected call duration का दावा नहीं है। रिपोर्ट उपलब्ध/अनुमत डेटा पर आधारित है।</p>';
@@ -63,7 +65,7 @@ $('messageForm').onsubmit=e=>{e.preventDefault();db.messages.push({text:$('messa
 $('inventoryForm').onsubmit=e=>{e.preventDefault();const unit=$('iUnit').value.trim();if(db.inventory.some(x=>x.project===$('iProject').value&&x.unit.toLowerCase()===unit.toLowerCase())){alert('यह Plot / Unit पहले से दर्ज है।');return}db.inventory.push({id:crypto.randomUUID(),project:$('iProject').value,unit,size:$('iSize').value,rate:$('iRate').value,status:$('iStatus').value,block:$('iBlock').value});e.target.reset();save();render();alert('Inventory unit सेव हो गई।')};
 $('paymentForm').onsubmit=e=>{e.preventDefault();if(!$('pBooking').value){alert('पहले Booking दर्ज करें।');return}db.payments.push({id:crypto.randomUUID(),booking:$('pBooking').value,amount:$('pAmount').value,date:$('pDate').value,mode:$('pMode').value,ref:$('pRef').value,due:$('pDue').value});e.target.reset();save();render();alert('Payment entry सेव हो गई।')};
 $('partnerForm').onsubmit=e=>{e.preventDefault();db.partners.push({id:crypto.randomUUID(),name:$('cpName').value,phone:$('cpPhone').value,firm:$('cpFirm').value,type:$('cpType').value,manager:$('cpManager').value,area:$('cpArea').value,kycRef:$('cpKyc').value,commission:$('cpCommission').value,project:$('cpProject').value,status:$('cpStatus').value});e.target.reset();save();render();alert('Channel partner सेव हो गया।')};$('payoutForm').onsubmit=e=>{e.preventDefault();db.partnerPayouts.push({id:crypto.randomUUID(),partner:$('payPartner').value,booking:$('payBooking').value,amount:$('payAmount').value,status:$('payStatus').value,date:$('payDate').value,ref:$('payRef').value,notes:$('payNotes').value});e.target.reset();save();render();alert('Broker commission entry सेव हो गई।')};
-$('leadSearch').oninput=render;$('export').onclick=()=>{const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(db,null,2)],{type:'application/json'}));a.download='sr-developers-crm-backup.json';a.click();URL.revokeObjectURL(a.href)};
+let leadSearchTimer; $('leadSearch').oninput=()=>{clearTimeout(leadSearchTimer);leadSearchTimer=setTimeout(render,180)};$('export').onclick=()=>{const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(db,null,2)],{type:'application/json'}));a.download='sr-developers-crm-backup.json';a.click();URL.revokeObjectURL(a.href)};
 $('importFile').onchange=async e=>{const f=e.target.files[0];if(!f)return;try{const x=JSON.parse(await f.text());if(!x.leads||!x.staff)throw Error();db=x;save();render();alert('Backup restore हो गया।')}catch{alert('यह backup file सही नहीं है।')}};
 window.srDb=db;window.srRender=render;
 window.srSetProfiles=profiles=>{
