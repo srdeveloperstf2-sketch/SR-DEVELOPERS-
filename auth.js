@@ -260,9 +260,18 @@
     if(data?.error)throw new Error(data.detail ? data.error+': '+data.detail : data.error);
     return data;
   }
+  function validateCreatedAccount(data){
+    if(!data || typeof data!=='object') throw new Error('Server से Login ID का सही जवाब नहीं मिला। Supabase में create-staff-login Function को latest code से redeploy करें।');
+    if(!/^SRD[0-9]{4,}$/.test(String(data.employeeCode||''))) throw new Error('Employee ID सही नहीं बनी। Expected format SRD0001. Supabase में employee_identity_migration.sql चलाएँ और create-staff-login Function redeploy करें।');
+    if(!/^\d{6}$/.test(String(data.temporaryPassword||''))) throw new Error('Server ने 6 अंकों का Password नहीं दिया। Supabase में create-staff-login Function को latest code से redeploy करें।');
+    if(!data.fullName || !data.email) throw new Error('Staff का नाम या Email Server response में नहीं मिला। Pending Request का विवरण जाँचें।');
+    return data;
+  }
   function showCreatedAccount(data){
+    validateCreatedAccount(data);
     const target=document.getElementById('staffAccountResult');
-    target.innerHTML='<div class="credential-box"><b>Login ID बन गई</b><p>Name: '+data.fullName+'</p><p>Employee ID: <strong>'+data.employeeCode+'</strong></p><p>Mobile: '+(data.phone||'')+'</p><p>Email: '+data.email+'</p><p>Role: '+data.role+'</p><p>Temporary Password: <strong>'+data.temporaryPassword+'</strong></p><button type="button" id="copyStaffCredentials" class="tiny secondary">Credentials Copy करें</button><p>6 अंकों का Password कर्मचारी को निजी रूप से दें। पहली Login के बाद Password बदलवाएँ।</p></div>';
+    const safe=value=>String(value??'').replace(/[&<>"]/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch]));
+    target.innerHTML='<div class="credential-box"><b>Login ID बन गई</b><p>Name: '+safe(data.fullName)+'</p><p>Employee ID: <strong>'+safe(data.employeeCode)+'</strong></p><p>Mobile: '+safe(data.phone||'रिकॉर्ड नहीं')+'</p><p>Email: '+safe(data.email)+'</p><p>Role: '+safe(data.role)+'</p><p>Temporary Password: <strong>'+safe(data.temporaryPassword)+'</strong></p><button type="button" id="copyStaffCredentials" class="tiny secondary">Credentials Copy करें</button><p>पासवर्ड ठीक 6 अंकों का है। इसे कर्मचारी को निजी रूप से दें।</p></div>';
     document.getElementById('copyStaffCredentials').onclick=()=>navigator.clipboard?.writeText('Employee ID: '+data.employeeCode+'\nEmail: '+data.email+'\nMobile: '+(data.phone||'')+'\nTemporary Password: '+data.temporaryPassword);
   }
   async function approveSignup(requestId, button){
