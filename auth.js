@@ -14,6 +14,7 @@
     document.getElementById('sessionUser').textContent=(profile.full_name||user.email)+' · '+profile.role;
     document.querySelectorAll('.admin-only').forEach(el=>el.hidden=profile.role!=='admin');
     signOut.hidden=false;
+    ensurePasswordPanel();
     if(profile.role==='admin') initStaffAdmin();
   };
   const showGate = () => { login.hidden=false; appHeader.hidden=true; appMain.hidden=true; if(footer)footer.hidden=true; signOut.hidden=true; };
@@ -23,6 +24,49 @@
   }
   const client=window.supabase.createClient(cfg.url,cfg.publishableKey);
   window.srSupabase=client;
+
+  // Self-service password change for every authenticated staff member.
+  let passwordPanel;
+  function ensurePasswordPanel(){
+    if(passwordPanel) return passwordPanel;
+    const tools=document.querySelector('.session-tools');
+    if(!tools) return null;
+    const open=document.createElement('button');
+    open.type='button'; open.className='tiny secondary'; open.textContent='Password बदलें';
+    open.id='changePasswordOpen';
+    passwordPanel=document.createElement('section');
+    passwordPanel.id='changePasswordPanel';
+    passwordPanel.className='panel';
+    passwordPanel.hidden=true;
+    passwordPanel.innerHTML='<h3>अपना Password बदलें</h3><form id="changePasswordForm"><label>वर्तमान Password<input id="currentPassword" type="password" autocomplete="current-password" required></label><label>नया Password (कम-से-कम 8 अक्षर)<input id="newPassword" type="password" minlength="8" autocomplete="new-password" required></label><label>नया Password दोबारा लिखें<input id="confirmPassword" type="password" minlength="8" autocomplete="new-password" required></label><p id="passwordChangeStatus" role="status"></p><button class="wide" type="submit" id="saveNewPassword">Password सुरक्षित करें</button></form>';
+    tools.insertBefore(open, signOut);
+    appHeader.insertAdjacentElement('afterend',passwordPanel);
+    open.addEventListener('click',()=>{passwordPanel.hidden=!passwordPanel.hidden;});
+    passwordPanel.querySelector('#changePasswordForm').addEventListener('submit',async e=>{
+      e.preventDefault();
+      const current=document.getElementById('currentPassword').value;
+      const next=document.getElementById('newPassword').value;
+      const confirm=document.getElementById('confirmPassword').value;
+      const out=document.getElementById('passwordChangeStatus');
+      const save=document.getElementById('saveNewPassword');
+      if(next.length<8){out.textContent='नया Password कम-से-कम 8 अक्षर का रखें।';return;}
+      if(next!==confirm){out.textContent='दोनों नए Password एक जैसे नहीं हैं।';return;}
+      if(next===current){out.textContent='नया Password वर्तमान Password से अलग रखें।';return;}
+      save.disabled=true; save.textContent='बदल रहा है…'; out.textContent='वर्तमान Password जाँचा जा रहा है…';
+      try{
+        const {data:ud,error:ue}=await client.auth.getUser();
+        if(ue||!ud?.user?.email) throw new Error('Login session verify नहीं हुआ। दोबारा Login करें।');
+        const {error:reauthError}=await client.auth.signInWithPassword({email:ud.user.email,password:current});
+        if(reauthError) throw new Error('वर्तमान Password सही नहीं है।');
+        const {error:updateError}=await client.auth.updateUser({password:next});
+        if(updateError) throw updateError;
+        passwordPanel.querySelector('#changePasswordForm').reset();
+        out.textContent='Password सफलतापूर्वक बदल गया। अगली बार नए Password से Login करें।';
+      }catch(err){out.textContent='Password नहीं बदला: '+(err?.message||String(err));}
+      finally{save.disabled=false;save.textContent='Password सुरक्षित करें';}
+    });
+    return passwordPanel;
+  }
   let verificationInFlight=null;
   async function verifySession(session){
     if(!session){showGate();return}
