@@ -110,7 +110,7 @@
   }
   function renderReport(){
     const counts=new Map();
-    for(const p of profiles)counts.set(p.id,{name:p.full_name,role:p.role,leads:0,followups:0,visits:0,bookings:0,attendance:0});
+    for(const p of profiles)counts.set(p.id,{name:p.full_name,employee_code:p.employee_code,role:p.role,leads:0,followups:0,visits:0,bookings:0,attendance:0});
     for(const r of records){
       const owner=r.owner_id||r.created_by;const c=counts.get(owner);if(!c)continue;
       if(r.record_type==='lead')c.leads++;
@@ -126,7 +126,7 @@
     if(!client||!me)return;
     status('Staff Control का डेटा लोड हो रहा है…');
     const [p,a,l,r]=await Promise.all([
-      client.from('profiles').select('id,full_name,role,phone,manager_id,team_leader_id,is_active,created_at').order('full_name'),
+      client.from('profiles').select('id,employee_code,full_name,role,phone,manager_id,team_leader_id,is_active,created_at').order('full_name'),
       client.from('attendance').select('id,user_id,attendance_date,check_in,check_out').order('attendance_date',{ascending:false}).limit(500),
       client.from('leave_requests').select('*').order('created_at',{ascending:false}).limit(200),
       client.from('crm_records').select('id,record_type,owner_id,created_by,updated_at').limit(2000)
