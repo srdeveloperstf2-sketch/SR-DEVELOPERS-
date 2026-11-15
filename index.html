@@ -4,7 +4,32 @@
 .resource-card img,.resource-card video{width:104px;height:78px;object-fit:cover;border-radius:9px;background:#edf3ef}
 .resource-card .resource-info{min-width:0;flex:1}.resource-card small{display:block;color:#66756c;overflow-wrap:anywhere}
 </style></head><body>
-<section id="authGate" class="auth-gate" hidden><div class="auth-card"><img src="assets/sr-developers-logo.svg" alt="S.R. Developers"><h1>S.R. DEVELOPERS CRM</h1><p>कर्मचारी Login</p><form id="loginForm"><label>Employee ID / Mobile Number<input id="loginEmail" type="text" autocomplete="username" placeholder="SRD0001 या Registered Mobile Number" required></label><label>Password<input id="loginPassword" type="password" autocomplete="current-password" placeholder="6 अंकों का Password" required></label><button id="loginButton" class="wide">Login करें</button></form><p id="authStatus" role="status">Employee ID या Registered Mobile Number और 6 अंकों के Password से Login करें। OTP की जरूरत नहीं।</p><p class="muted" style="text-align:center;margin-top:14px">क्या आप Channel Partner हैं? <a href="partner.html">Partner Portal पर जाएँ</a></p><div class="auth-divider">कंपनी में नई ID चाहिए?</div><section id="employeeReg"><h3>कर्मचारी Registration</h3><form id="signupForm"><label>पूरा नाम<input id="signupName" required minlength="2"></label><label>Email<input id="signupEmail" type="email" required></label><label>मोबाइल नंबर<input id="signupPhone" type="tel" inputmode="tel" autocomplete="tel" required></label><label>किस पद के लिए आवेदन?<select id="signupRole"><option value="sales_executive">Sales Executive</option><option value="team_leader">Team Leader</option><option value="manager">Manager</option></select></label><label class="wide">Admin के लिए संदेश<textarea id="signupMessage" placeholder="टीम / लोकेशन / जानकारी"></textarea></label><button class="wide secondary" id="signupButton">नई Employee ID के लिए Request भेजें</button></form><p class="muted">Request Admin की मंजूरी के बाद ही Login ID बनेगी। Self-signup से Admin अधिकार नहीं मिलेंगे।</p></section></div></section><header hidden><div class="brand"><span class="brand-logo"><img src="assets/sr-developers-logo.svg" alt="S.R. Developers logo"></span><div><b>S.R. DEVELOPERS</b><small>REAL ESTATE CRM</small></div></div><div class="session-tools"><span id="sessionUser" class="pill"></span><button id="signOut" class="tiny secondary" hidden>Logout</button></div></header>
+<section id="authGate" class="auth-gate" hidden>
+  <div class="auth-card portal-card">
+    <div class="portal-brand"><img src="assets/sr-developers-logo.svg" alt="S.R. Developers"><div><span>WELCOME TO</span><h1>S.R. DEVELOPERS</h1><small>GREEN CITY INDIA PVT. LTD.</small></div></div>
+    <div class="portal-heading"><h2>Login Portal</h2><p>अपनी भूमिका के अनुसार Login करें</p></div>
+    <div class="portal-choices">
+      <div class="portal-choice active"><span class="portal-icon">👨‍💼</span><b>Staff Login</b><small>Admin · Manager · Team</small></div>
+      <a class="portal-choice partner-choice" href="partner.html"><span class="portal-icon">🤝</span><b>Channel Partner</b><small>Broker / Partner Login</small></a>
+    </div>
+    <form id="loginForm" class="portal-login-form">
+      <label>Employee ID / Registered Mobile<input id="loginEmail" type="text" autocomplete="username" placeholder="SRD0001 या Mobile Number" required></label>
+      <label>Password<input id="loginPassword" type="password" autocomplete="current-password" placeholder="अपना Password डालें" required></label>
+      <button id="loginButton" class="wide">Secure Login →</button>
+    </form>
+    <p id="authStatus" role="status">Admin, Manager, Team Leader और Sales Executive इसी Staff Login से प्रवेश करें।</p>
+    <div class="portal-register"><span>कंपनी में नई ID चाहिए?</span><button type="button" id="toggleEmployeeReg" class="portal-text-btn">Registration Request खोलें</button></div>
+    <section id="employeeReg" hidden class="portal-register-panel"><h3>Employee Registration</h3><form id="signupForm">
+      <label>पूरा नाम<input id="signupName" required minlength="2"></label>
+      <label>Email<input id="signupEmail" type="email" required></label>
+      <label>मोबाइल नंबर<input id="signupPhone" type="tel" inputmode="tel" autocomplete="tel" required></label>
+      <label>किस पद के लिए आवेदन?<select id="signupRole"><option value="sales_executive">Sales Executive</option><option value="team_leader">Team Leader</option><option value="manager">Manager</option></select></label>
+      <label class="wide">Admin के लिए संदेश<textarea id="signupMessage" placeholder="टीम / लोकेशन / जानकारी"></textarea></label>
+      <button class="wide secondary" id="signupButton">नई Employee ID के लिए Request भेजें</button>
+    </form><p class="muted">Admin की मंजूरी के बाद ही Login ID बनेगी।</p></section>
+    <div class="portal-footer">S.R. Developers Green City India (P) Ltd. · Secure Access</div>
+  </div>
+</section><header hidden><div class="brand"><span class="brand-logo"><img src="assets/sr-developers-logo.svg" alt="S.R. Developers logo"></span><div><b>S.R. DEVELOPERS</b><small>REAL ESTATE CRM</small></div></div><div class="session-tools"><span id="sessionUser" class="pill"></span><button id="signOut" class="tiny secondary" hidden>Logout</button></div></header>
 <main><section class="welcome"><p>SR DEVELOPERS • GURUGRAM</p><h1>Business Dashboard</h1><span>Sales, follow-ups और team operations एक जगह</span></section>
 <div class="warning"><b>महत्वपूर्ण:</b> Admin Login सफल है। वास्तविक ग्राहक डेटा दर्ज करने से पहले दूसरे कर्मचारी अकाउंट और दूसरे मोबाइल पर Data Sync तथा Role Permissions का परीक्षण पूरा करें।</div>
 <nav id="tabs"><button data-tab="dashboard" class="active">Dashboard</button><button data-tab="leads">Leads</button><button data-tab="followups">Follow-ups</button><button data-tab="visits">Site Visits</button><button data-tab="bookings">Bookings</button><button data-tab="inventory">Inventory</button><button data-tab="payments">Payments</button><button data-tab="partners">Partners</button><button data-tab="attendance" hidden>Attendance</button><button data-tab="team">Team</button><button data-tab="reports">Reports</button><button data-tab="projects">Projects</button><button data-tab="sharing">Client Sharing</button><button data-tab="tools">EMI Calculator</button></nav>
