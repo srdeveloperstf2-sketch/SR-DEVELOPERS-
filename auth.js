@@ -17,7 +17,7 @@
     ensurePasswordPanel();
     // Team profiles are loaded after cloud sync in verifySession.
   };
-  const showGate = () => { window.srCurrentProfile=null; login.hidden=false; appHeader.hidden=true; appMain.hidden=true; if(footer)footer.hidden=true; signOut.hidden=true; };
+  const showGate = () => { window.srCurrentProfile=null; login.hidden=false; appHeader.hidden=true; appMain.hidden=true; if(footer)footer.hidden=true; signOut.hidden=true; window.dispatchEvent(new CustomEvent('sr-auth-logout')); };
   showGate();
   if (!cfg.url || !cfg.publishableKey || !window.supabase) {
     setState('Supabase configuration missing. Admin से संपर्क करें।',true); return;
