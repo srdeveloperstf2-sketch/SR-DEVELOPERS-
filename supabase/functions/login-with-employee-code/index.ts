@@ -48,7 +48,7 @@ Deno.serve(async (req: Request) => {
       digits.length === 12 && digits.startsWith("91") ? "+" + digits : "";
     const password = typeof body?.password === "string" ? body.password : "";
     const isCode = /^SRD[0-9]{4,}$/.test(code);
-    if ((!isCode && !mobile) || password.length < 6 || password.length > 128) {
+    if ((!isCode && !mobile) || !/^\\d{6}$/.test(password)) {
       return reply(req, { error: "Employee ID / Mobile Number या Password सही नहीं है।" }, 400);
     }
 
