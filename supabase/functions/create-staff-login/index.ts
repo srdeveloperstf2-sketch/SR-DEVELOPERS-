@@ -1,7 +1,13 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 
-const allowedOrigins = (Deno.env.get("ALLOWED_ORIGINS") ?? "")
-  .split(",").map((value) => value.trim()).filter(Boolean);
+const configuredOrigins = (Deno.env.get("ALLOWED_ORIGINS") ?? "").split(",").map((value) => value.trim()).filter(Boolean);
+// GitHub Pages web app + Capacitor Android origins. Override with ALLOWED_ORIGINS in production.
+const allowedOrigins = configuredOrigins.length ? configuredOrigins : [
+  "https://srdeveloperstf2-sketch.github.io",
+  "https://localhost",
+  "capacitor://localhost",
+  "http://localhost",
+];
 
 function corsHeaders(req: Request) {
   const origin = req.headers.get("Origin");
