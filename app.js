@@ -56,7 +56,13 @@ $('paymentForm').onsubmit=e=>{e.preventDefault();if(!$('pBooking').value){alert(
 $('partnerForm').onsubmit=e=>{e.preventDefault();db.partners.push({id:crypto.randomUUID(),name:$('cpName').value,phone:$('cpPhone').value,firm:$('cpFirm').value,type:$('cpType').value,manager:$('cpManager').value,area:$('cpArea').value,kycRef:$('cpKyc').value,commission:$('cpCommission').value,project:$('cpProject').value,status:$('cpStatus').value});e.target.reset();save();render();alert('Channel partner सेव हो गया।')};$('payoutForm').onsubmit=e=>{e.preventDefault();db.partnerPayouts.push({id:crypto.randomUUID(),partner:$('payPartner').value,booking:$('payBooking').value,amount:$('payAmount').value,status:$('payStatus').value,date:$('payDate').value,ref:$('payRef').value,notes:$('payNotes').value});e.target.reset();save();render();alert('Broker commission entry सेव हो गई।')};
 $('leadSearch').oninput=render;$('export').onclick=()=>{const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(db,null,2)],{type:'application/json'}));a.download='sr-developers-crm-backup.json';a.click();URL.revokeObjectURL(a.href)};
 $('importFile').onchange=async e=>{const f=e.target.files[0];if(!f)return;try{const x=JSON.parse(await f.text());if(!x.leads||!x.staff)throw Error();db=x;save();render();alert('Backup restore हो गया।')}catch{alert('यह backup file सही नहीं है।')}};
-window.srDb=db;window.srRender=render;render();
+window.srDb=db;window.srRender=render;
+window.srSetProfiles=profiles=>{
+ const local=(db.staff||[]).filter(x=>!x.profileId);
+ const mapped=(profiles||[]).map(p=>({id:p.id,profileId:p.id,name:p.full_name||p.email||'Staff',phone:p.phone||'',role:p.role==='sales_executive'?'Sales Executive':p.role==='team_leader'?'Team Leader':p.role==='manager'?'Manager':'Admin',target:'',managerId:p.manager_id||'',managerName:(profiles||[]).find(m=>m.id===p.manager_id)?.full_name||'',active:p.is_active!==false}));
+ db.staff=[...local,...mapped];render();
+};
+render();
 $('resourceForm').onsubmit=e=>{e.preventDefault();db.resources=db.resources||[];db.resources.push({project:$('shareProject').value,type:$('resourceType').value,url:$('resourceUrl').value.trim(),label:$('resourceLabel').value.trim()});save();e.target.reset();render();alert('Resource link सेव हो गया।')};
 window.useResource=i=>{const r=(db.resources||[])[i];if(!r)return;$('shareProject').value=r.project;$('sendProject').value=r.project;$('resourceType').value=r.type;$('shareType').value=r.type;$('shareUrl').value=r.url;$('resourceLabel').value=r.label||'';$('shareMessage').value=resourceMessage(r);};
 window.deleteResource=i=>{if(!confirm('इस resource link को हटाएँ?'))return;db.resources.splice(i,1);save();render()};
