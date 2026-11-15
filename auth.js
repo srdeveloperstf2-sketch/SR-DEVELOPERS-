@@ -59,6 +59,32 @@
     else {signupForm.reset();setState('आपकी Request Admin को भेज दी गई है। मंजूरी के बाद Login ID मिलेगी।');}
     b.disabled=false;b.textContent='नई ID के लिए Request भेजें';
   });
+  const employeeTab=document.getElementById('employeeRegTab');
+  const partnerTab=document.getElementById('partnerRegTab');
+  if(employeeTab&&partnerTab){
+    employeeTab.addEventListener('click',()=>{document.getElementById('employeeReg').hidden=false;document.getElementById('partnerReg').hidden=true;});
+    partnerTab.addEventListener('click',()=>{document.getElementById('employeeReg').hidden=true;document.getElementById('partnerReg').hidden=false;});
+  }
+  const partnerForm=document.getElementById('partnerSignupForm');
+  if(partnerForm) partnerForm.addEventListener('submit',async e=>{
+    e.preventDefault();
+    const b=document.getElementById('partnerSignupButton');b.disabled=true;b.textContent='Request भेजी जा रही है…';
+    const payload={
+      full_name:document.getElementById('partnerSignupName').value.trim(),
+      email:document.getElementById('partnerSignupEmail').value.trim().toLowerCase(),
+      phone:document.getElementById('partnerSignupPhone').value.trim(),
+      partner_type:document.getElementById('partnerSignupType').value,
+      firm_name:document.getElementById('partnerSignupFirm').value.trim()||null,
+      area:document.getElementById('partnerSignupArea').value.trim()||null,
+      project_interest:document.getElementById('partnerSignupProject').value,
+      message:document.getElementById('partnerSignupMessage').value.trim()||null,
+      status:'pending'
+    };
+    const {error}=await client.from('partner_signup_requests').insert(payload);
+    if(error)setState('Partner Request नहीं भेजी गई: '+error.message,true);
+    else {partnerForm.reset();setState('Business Associate Request Admin को भेज दी गई है। मंजूरी के बाद Partner Login बनेगा।');}
+    b.disabled=false;b.textContent='Partner Registration Request भेजें';
+  });
   async function initStaffAdmin(){
     const {data}=await client.from('profiles').select('id,full_name').eq('role','manager').eq('is_active',true).order('full_name');
     window.srActiveManagers=data||[];
