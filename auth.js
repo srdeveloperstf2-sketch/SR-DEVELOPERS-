@@ -198,6 +198,7 @@
     window.srVisibleProfiles=data||[];
     window.srActiveManagers=(data||[]).filter(p=>['manager','team_leader'].includes(p.role));
     window.srSetProfiles?.(window.srVisibleProfiles);
+    refreshDirectStaffManagers();
     await loadSignupRequests();
   }
   async function loadSignupRequests(){
