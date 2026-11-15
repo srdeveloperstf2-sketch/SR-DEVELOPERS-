@@ -77,8 +77,10 @@
     }catch(err){out.textContent='Password नहीं बदला: '+(err?.message||String(err));}
     finally{save.disabled=false;save.textContent='नया Password सुरक्षित करें';}
   });
+  let passwordRecoveryMode=false;
   client.auth.onAuthStateChange((event,session)=>{
     if(event==='PASSWORD_RECOVERY'){
+      passwordRecoveryMode=true;
       showGate();
       recoveryBox.hidden=false;
       const lf=document.getElementById('loginForm'); if(lf) lf.hidden=true;
@@ -246,7 +248,7 @@
   async function rejectSignup(requestId){const {data:authData}=await client.auth.getUser();const {error}=await client.from('staff_signup_requests').update({status:'rejected',reviewed_by:authData.user.id,reviewed_at:new Date().toISOString()}).eq('id',requestId).eq('status','pending');if(error)setState('Reject नहीं हुआ: '+error.message,true);else await loadSignupRequests();}
   document.getElementById('refreshSignupRequests').addEventListener('click',loadSignupRequests);
 
-  client.auth.getSession().then(({data})=>verifySession(data.session));
+  client.auth.getSession().then(({data})=>{if(!passwordRecoveryMode) verifySession(data.session);});
   form.addEventListener('submit',async e=>{
     e.preventDefault(); btn.disabled=true; btn.textContent='लॉगिन हो रहा है…'; setState('आपकी जानकारी जाँची जा रही है।');
     const email=document.getElementById('loginEmail').value.trim();
