@@ -139,7 +139,9 @@ Deno.serve(async (req: Request) => {
     if (!ROLES.includes(role as typeof ROLES[number])) {
       return json(req, { error: "Role must be manager, team_leader, or sales_executive" }, 400);
     }
-    if (managerId !== null && !UUID.test(managerId)) return json(req, { error: "Invalid managerId" }, 400);
+    if (managerId !== null && !UUID.test(managerId)) return json(req, { error: "Invalid reporting manager ID" }, 400);
+    if (role === "manager" && managerId !== null) return json(req, { error: "A Manager cannot report to another staff member" }, 400);
+    if (role !== "manager" && managerId === null) return json(req, { error: "Select a Reporting Manager" }, 400);
 
     const { data: requestRow, error: requestError } = await admin
       .from("staff_signup_requests")
@@ -164,13 +166,20 @@ Deno.serve(async (req: Request) => {
 
     if (managerId) {
       const { data: manager, error: managerError } = await admin
-        .from("profiles").select("id,role,is_active").eq("id", managerId).maybeSingle();
+        .from("profiles").select("id,role,is_active,manager_id").eq("id", managerId).maybeSingle();
       if (managerError) {
         console.error("Manager lookup failed", managerError.message);
         return json(req, { error: "Could not verify reporting manager" }, 500);
       }
-      if (!manager || manager.role !== "manager" || manager.is_active !== true) {
-        return json(req, { error: "Reporting manager must be an active Manager" }, 400);
+      const validSupervisor = role === "team_leader"
+        ? manager?.role === "manager"
+        : role === "sales_executive"
+          ? ["manager", "team_leader"].includes(manager?.role ?? "")
+          : false;
+      if (!manager || !validSupervisor || manager.is_active !== true) {
+        return json(req, { error: role === "team_leader"
+          ? "A Team Leader must report to an active Manager"
+          : "A Sales Executive must report to an active Manager or Team Leader" }, 400);
       }
     }
 
@@ -187,12 +196,16 @@ Deno.serve(async (req: Request) => {
     }
     createdUserId = created.user.id;
 
+    const { data: supervisor } = managerId
+      ? await admin.from("profiles").select("id,role,manager_id").eq("id", managerId).maybeSingle()
+      : { data: null };
     const { error: insertProfileError } = await admin.from("profiles").insert({
       id: created.user.id,
       full_name: fullName,
       role,
       phone: phone || null,
-      manager_id: managerId,
+      manager_id: supervisor?.role === "team_leader" ? supervisor.manager_id : managerId,
+      team_leader_id: supervisor?.role === "team_leader" ? managerId : null,
       is_active: true,
     });
     if (insertProfileError) {
