@@ -130,7 +130,7 @@
     if(!client||!me)return;
     status('Staff Control का डेटा लोड हो रहा है…');
     const [p,a,l,r]=await Promise.all([
-      client.from('profiles').select('id,full_name,role,phone,email,manager_id,team_leader_id,is_active,created_at').order('full_name'),
+      client.from('profiles').select('id,full_name,role,phone,manager_id,team_leader_id,is_active,created_at').order('full_name'),
       client.from('attendance').select('id,user_id,attendance_date,check_in,check_out').order('attendance_date',{ascending:false}).limit(500),
       client.from('leave_requests').select('*').order('created_at',{ascending:false}).limit(200),
       client.from('crm_records').select('id,record_type,owner_id,created_by,updated_at').limit(2000)
@@ -143,6 +143,8 @@
     if(!a.error&&!l.error)status('Staff Control अपडेट है · '+profiles.length+' visible profiles');
   }
   $('scAttendanceDate').value=today();
+  $('scLeaveStart').value=today();$('scLeaveEnd').value=today();
+  window.srStaffControlRefresh=refresh;
   $('scCheckIn').onclick=()=>attendanceAction('in');
   $('scCheckOut').onclick=()=>attendanceAction('out');
   $('scLeaveForm').onsubmit=async e=>{
