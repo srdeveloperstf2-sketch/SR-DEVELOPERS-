@@ -348,6 +348,15 @@
   });
 
 
+
+  const regToggle=document.getElementById('toggleEmployeeReg');
+  const regPanel=document.getElementById('employeeReg');
+  if(regToggle&&regPanel)regToggle.addEventListener('click',()=>{
+    regPanel.hidden=!regPanel.hidden;
+    regToggle.textContent=regPanel.hidden?'Registration Request खोलें':'Registration बंद करें';
+    if(!regPanel.hidden)regPanel.scrollIntoView({behavior:'smooth',block:'nearest'});
+  });
+
   client.auth.getSession().then(({data})=>{if(!passwordRecoveryMode) verifySession(data.session);});
   form.addEventListener('submit',async e=>{
     e.preventDefault();
