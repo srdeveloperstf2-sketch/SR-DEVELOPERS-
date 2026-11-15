@@ -74,7 +74,22 @@
     target.querySelectorAll('[data-reject]').forEach(b=>b.onclick=()=>rejectSignup(b.dataset.reject));
   }
   async function createStaff(payload){
-    const {data,error}=await client.functions.invoke('create-staff-login',{body:payload});
+    // Always attach a fresh, verified Admin access token explicitly.
+    let {data:sessionData,error:sessionError}=await client.auth.getSession();
+    let session=sessionData?.session||null;
+    if(sessionError) console.warn('Could not read current auth session:',sessionError.message);
+    if(!session?.access_token || (session.expires_at && session.expires_at*1000 < Date.now()+60000)){
+      const refreshed=await client.auth.refreshSession();
+      if(refreshed.error) throw new Error('Admin login session समाप्त हो गया है। Logout करके दोबारा Admin Login करें।');
+      session=refreshed.data?.session||null;
+    }
+    if(!session?.access_token) throw new Error('Valid Admin login session नहीं मिला। Logout करके दोबारा Login करें।');
+    const {data:currentUser,error:userError}=await client.auth.getUser(session.access_token);
+    if(userError || !currentUser?.user) throw new Error('Admin login verify नहीं हुआ। Logout करके दोबारा Login करें।');
+    const {data,error}=await client.functions.invoke('create-staff-login',{
+      body:payload,
+      headers:{Authorization:'Bearer '+session.access_token}
+    });
     if(error){
       let detail=error.message||'Function request failed';
       try{
