@@ -172,19 +172,27 @@
   }
 
   const signupForm=document.getElementById('signupForm');
-  signupForm.addEventListener('submit',async e=>{
-    e.preventDefault();const b=document.getElementById('signupButton');b.disabled=true;b.textContent='Request भेजी जा रही है…';
-    const {error}=await client.from('staff_signup_requests').insert({
-      full_name:document.getElementById('signupName').value.trim(),
-      email:document.getElementById('signupEmail').value.trim().toLowerCase(),
-      phone:document.getElementById('signupPhone').value.trim()||null,
-      requested_role:document.getElementById('signupRole').value,
-      message:document.getElementById('signupMessage').value.trim()||null,
-      status:'pending'
-    });
-    if(error)setState('Request नहीं भेजी गई: '+error.message,true);
-    else {signupForm.reset();setState('आपकी Request Admin को भेज दी गई है। मंजूरी के बाद Login ID मिलेगी।');}
-    b.disabled=false;b.textContent='नई ID के लिए Request भेजें';
+  if(signupForm) signupForm.addEventListener('submit',async e=>{
+    e.preventDefault();
+    const b=document.getElementById('signupButton');
+    b.disabled=true;b.textContent='Request भेजी जा रही है…';
+    try{
+      const {error}=await client.from('staff_signup_requests').insert({
+        full_name:document.getElementById('signupName').value.trim(),
+        email:document.getElementById('signupEmail').value.trim().toLowerCase(),
+        phone:document.getElementById('signupPhone').value.trim()||null,
+        requested_role:document.getElementById('signupRole').value,
+        message:document.getElementById('signupMessage').value.trim()||null,
+        status:'pending'
+      });
+      if(error)throw error;
+      signupForm.reset();
+      setState('आपकी Request Admin को भेज दी गई है। मंजूरी के बाद Login ID मिलेगी।');
+    }catch(err){
+      setState('Request नहीं भेजी गई: '+(err?.message||String(err)),true);
+    }finally{
+      b.disabled=false;b.textContent='नई ID के लिए Request भेजें';
+    }
   });
   async function loadVisibleTeamProfiles(){
     const {data,error}=await client.from('profiles').select('id,employee_code,full_name,role,phone,manager_id,is_active').eq('is_active',true).order('full_name');
