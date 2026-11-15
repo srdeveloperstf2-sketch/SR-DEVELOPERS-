@@ -262,8 +262,8 @@
   }
   function showCreatedAccount(data){
     const target=document.getElementById('staffAccountResult');
-    target.innerHTML='<div class="credential-box"><b>Login ID बन गई</b><p>Name: '+data.fullName+'</p><p>Email: '+data.email+'</p><p>Role: '+data.role+'</p><p>Temporary Password: <strong>'+data.temporaryPassword+'</strong></p><button type="button" id="copyStaffCredentials" class="tiny secondary">Credentials Copy करें</button><p>यह Password कर्मचारी को सुरक्षित तरीके से दें और पहली Login के बाद बदलवाएँ।</p></div>';
-    document.getElementById('copyStaffCredentials').onclick=()=>navigator.clipboard?.writeText('Email: '+data.email+'\nTemporary Password: '+data.temporaryPassword);
+    target.innerHTML='<div class="credential-box"><b>Login ID बन गई</b><p>Name: '+data.fullName+'</p><p>Employee ID: <strong>'+data.employeeCode+'</strong></p><p>Mobile: '+(data.phone||'')+'</p><p>Email: '+data.email+'</p><p>Role: '+data.role+'</p><p>Temporary Password: <strong>'+data.temporaryPassword+'</strong></p><button type="button" id="copyStaffCredentials" class="tiny secondary">Credentials Copy करें</button><p>Password निजी रूप से दें। OTP किसी से साझा न करें। पहली Login के बाद Password बदलवाएँ।</p></div>';
+    document.getElementById('copyStaffCredentials').onclick=()=>navigator.clipboard?.writeText('Employee ID: '+data.employeeCode+'\nEmail: '+data.email+'\nMobile: '+(data.phone||'')+'\nTemporary Password: '+data.temporaryPassword);
   }
   async function approveSignup(requestId, button){
     const result=document.getElementById('staffAccountResult');
@@ -341,12 +341,68 @@
 
   client.auth.getSession().then(({data})=>{if(!passwordRecoveryMode) verifySession(data.session);});
   form.addEventListener('submit',async e=>{
-    e.preventDefault(); btn.disabled=true; btn.textContent='लॉगिन हो रहा है…'; setState('आपकी जानकारी जाँची जा रही है।');
-    const email=document.getElementById('loginEmail').value.trim();
+    e.preventDefault();
+    btn.disabled=true; btn.textContent='लॉगिन हो रहा है…'; setState('आपकी जानकारी जाँची जा रही है।');
+    const identifier=document.getElementById('loginEmail').value.trim();
     const password=document.getElementById('loginPassword').value;
-    const {data,error}=await client.auth.signInWithPassword({email,password});
-    if(error){setState('Login नहीं हुआ: '+error.message,true);btn.disabled=false;btn.textContent='Login करें';return}
-    await verifySession(data.session); btn.disabled=false; btn.textContent='Login करें';
+    try{
+      if(/^SRD[0-9]{4,}$/i.test(identifier)){
+        if(!password) throw new Error('Employee ID Login के लिए Password लिखें।');
+        const {data,error}=await client.functions.invoke('login-with-employee-code',{body:{employeeCode:identifier,password}});
+        if(error) throw new Error(error.message||'Employee ID Login सेवा उपलब्ध नहीं है।');
+        if(data?.error) throw new Error(data.error);
+        if(!data?.access_token||!data?.refresh_token) throw new Error('Login Session प्राप्त नहीं हुआ।');
+        const {data:sessionData,error:sessionError}=await client.auth.setSession({access_token:data.access_token,refresh_token:data.refresh_token});
+        if(sessionError) throw sessionError;
+        await verifySession(sessionData.session);
+      }else{
+        if(!identifier||!password) throw new Error('Email और Password दोनों भरें।');
+        const {data,error}=await client.auth.signInWithPassword({email:identifier,password});
+        if(error) throw error;
+        await verifySession(data.session);
+      }
+    }catch(err){setState('Login नहीं हुआ: '+(err?.message||String(err)),true);}
+    finally{btn.disabled=false;btn.textContent='Password से Login करें';}
+  });
+
+  const sendOtpButton=document.getElementById('sendPhoneOtp');
+  const otpPanel=document.getElementById('phoneOtpPanel');
+  const otpForm=document.getElementById('phoneOtpForm');
+  let pendingOtpPhone='';
+  function normalizeIndiaPhone(value){
+    const digits=value.replace(/\\D/g,'');
+    if(digits.length===10)return '+91'+digits;
+    if(digits.length===12&&digits.startsWith('91'))return '+'+digits;
+    if(value.trim().startsWith('+')&&digits.length>=8&&digits.length<=15)return '+'+digits;
+    return '';
+  }
+  sendOtpButton?.addEventListener('click',async()=>{
+    const entered=document.getElementById('loginEmail').value.trim();
+    const phone=normalizeIndiaPhone(entered);
+    if(!phone){setState('Registered 10-digit Mobile Number या +CountryCode के साथ नंबर लिखें।',true);return;}
+    sendOtpButton.disabled=true;sendOtpButton.textContent='OTP भेजा जा रहा है…';
+    try{
+      const {error}=await client.auth.signInWithOtp({phone,options:{shouldCreateUser:false}});
+      if(error)throw error;
+      pendingOtpPhone=phone;otpPanel.hidden=false;
+      setState('Registered Mobile पर SMS OTP भेज दिया गया है। OTP किसी से साझा न करें।');
+      document.getElementById('phoneOtpCode').focus();
+    }catch(err){setState('SMS OTP नहीं भेजा गया: '+(err?.message||String(err))+' Supabase Auth में Phone Provider और SMS Provider चालू होना चाहिए।',true);}
+    finally{sendOtpButton.disabled=false;sendOtpButton.textContent='मोबाइल नंबर पर SMS OTP भेजें';}
+  });
+  otpForm?.addEventListener('submit',async e=>{
+    e.preventDefault();
+    const token=document.getElementById('phoneOtpCode').value.trim();
+    const verifyButton=document.getElementById('verifyPhoneOtp');
+    if(!pendingOtpPhone||!/^\\d{6}$/.test(token)){setState('6 अंकों का OTP सही लिखें और पहले OTP भेजें।',true);return;}
+    verifyButton.disabled=true;verifyButton.textContent='Verify हो रहा है…';
+    try{
+      const {data,error}=await client.auth.verifyOtp({phone:pendingOtpPhone,token,type:'sms'});
+      if(error)throw error;
+      otpForm.reset();otpPanel.hidden=true;pendingOtpPhone='';
+      await verifySession(data.session);
+    }catch(err){setState('OTP Verify नहीं हुआ: '+(err?.message||String(err)),true);}
+    finally{verifyButton.disabled=false;verifyButton.textContent='OTP Verify करके Login करें';}
   });
   signOut.addEventListener('click',async()=>{await client.auth.signOut();setState('आप Logout हो गए हैं।')});
 })();
