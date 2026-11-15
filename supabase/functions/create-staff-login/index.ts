@@ -48,20 +48,11 @@ function getServerSecret(): string | null {
   }
 }
 
-function temporaryPassword(length = 28): string {
-  const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$%^&*()-_=+";
-  const limit = Math.floor(256 / alphabet.length) * alphabet.length;
-  const output: string[] = [];
-  while (output.length < length) {
-    const bytes = new Uint8Array(64);
-    crypto.getRandomValues(bytes);
-    for (const byte of bytes) {
-      if (byte >= limit) continue;
-      output.push(alphabet[byte % alphabet.length]);
-      if (output.length === length) break;
-    }
-  }
-  return output.join("");
+function temporaryPassword(): string {
+  const bytes = new Uint8Array(4);
+  crypto.getRandomValues(bytes);
+  const value = new DataView(bytes.buffer).getUint32(0, false) % 100000000;
+  return String(value).padStart(8, "0");
 }
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -164,10 +155,9 @@ Deno.serve(async (req: Request) => {
       : "";
     if (
       fullName.length < 2 || fullName.length > 100 ||
-      !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email) || email.length > 254 ||
-      !phone
+      !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email) || email.length > 254
     ) {
-      return json(req, { error: "Valid name, email and mobile number are required. Use a 10-digit Indian mobile or E.164 number." }, 400);
+      return json(req, { error: "Signup request contains invalid name or email" }, 400);
     }
 
     if (managerId) {
@@ -192,10 +182,10 @@ Deno.serve(async (req: Request) => {
     const password = temporaryPassword();
     const { data: created, error: createError } = await admin.auth.admin.createUser({
       email,
-      phone,
+      ...(phone ? { phone } : {}),
       password,
       email_confirm: true,
-      phone_confirm: false,
+      ...(phone ? { phone_confirm: false } : {}),
       user_metadata: { full_name: fullName, account_type: "staff" },
     });
     if (createError || !created.user) {
