@@ -1,46 +1,62 @@
 # S.R. Developers CRM — Final Activation Checklist
 
-The web and Android source code is maintained in this repository. A successful GitHub build does not automatically apply database migrations or deploy Supabase Edge Functions.
+## Important protection
+- Existing Admin Auth user, email, password and Admin profile are not changed by the additive migrations below.
+- Do not run `ONE_TIME_SETUP.sql` again on an existing database.
+- Take a Supabase database backup before applying any migration.
+- A successful GitHub Pages build does not execute SQL or deploy Supabase Edge Functions.
 
-## 1. Database migrations
+## A. Database migrations (Supabase Dashboard → SQL Editor)
 
-Open Supabase Dashboard → SQL Editor. For a fresh database, run the files in this order:
+For a fresh, empty Supabase project, run the base setup once:
+1. `ONE_TIME_SETUP.sql`
 
-1. `supabase/ONE_TIME_SETUP.sql`
-2. `supabase/app_cloud_sync_migration.sql`
-3. `supabase/staff_signup_migration.sql`
-4. `supabase/final_hardening_migration.sql`
-5. `supabase/staff_control_center_migration.sql`
-6. `supabase/partner_signup_migration.sql`
+For an already initialized project, first check which migrations have already been applied. Do not rerun the base setup blindly. Apply only missing migrations in this order:
 
-If the first four files were already applied earlier, do not blindly rerun the base setup. Check the existing schema and run only migrations that are missing. Keep a database backup before applying schema changes.
+1. `app_cloud_sync_migration.sql` — shared CRM records for cloud sync.
+2. `staff_signup_migration.sql` — employee registration requests and Admin approval.
+3. `employee_identity_migration.sql` — sequential SRD Employee IDs for newly created staff.
+4. `final_hardening_migration.sql` — Manager → Team Leader → Executive reporting-tree access and duplicate active plot-booking protection.
+5. `staff_control_center_migration.sql` — Leave Requests table and Attendance indexes.
+6. `partner_signup_migration.sql` and `partner_portal_migration.sql` — Channel Partner records and portal policies, after checking whether either migration was already applied.
+7. `project_media_storage_migration.sql` — project photo/video Storage bucket and access policies.
 
-## 2. Deploy secure Edge Functions
+Do not apply a migration if its objects/policies already exist unless it is explicitly written to be safely repeatable. Review any SQL error before proceeding; never delete existing customer or booking records to make a migration pass.
 
-From a trusted computer with Supabase CLI installed and linked to this project:
+### Payments
+The current app stores payment entries in the `payments` collection inside `crm_records` (record_type `payment`). A separate `public.payments` table is not required for the current app flow. The cloud-sync migration must be active for those payment entries to sync between devices.
+
+## B. Supabase Edge Functions
+
+Deploy from a trusted computer with Supabase CLI linked to project `amzqgvyslzvhcilawunc`:
 
 ```bash
 supabase functions deploy create-staff-login
+supabase functions deploy login-with-employee-code
 supabase functions deploy create-partner-login
 ```
 
-Configure the service-role credential as a server-side Edge Function secret only. Never paste it into the website, GitHub source, chat, or a browser. The functions support the server-side environment names `SERVICE_ROLE_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, or `SUPABASE_SECRET_KEYS` (default entry).
+- Keep the service-role/secret key only in Supabase Edge Function Secrets.
+- Never put a service-role key in `supabase/config.js`, GitHub source, a browser, or chat.
+- `login-with-employee-code` is configured with `verify_jwt = false` in `config.toml`; deploy with the project config so this setting is respected.
+- GitHub commits alone do not deploy Edge Functions.
 
-If your Supabase project requires explicit function secrets, configure them with the CLI in the local terminal; do not share their values.
+## C. Required verification (test accounts only)
 
-## 3. Test before real customer data
+1. Existing Admin email/password login still works; Admin role and profile remain unchanged.
+2. Create one test employee from Admin → Team → Staff Login ID Management.
+3. Confirm SRD Employee ID generation, six-digit temporary password, Employee ID login and registered-mobile login.
+4. Confirm Manager, Team Leader and Sales Executive see only their permitted reporting-tree records.
+5. Test lead creation, follow-up, site visit, booking and duplicate active plot/unit protection.
+6. Test attendance check-in/check-out and leave request submission + approval/rejection.
+7. Test payment entry syncs to a second signed-in device.
+8. Test project photo/video upload and public preview only after Storage migration.
+9. Test Channel Partner approval, partner login, own-lead visibility and commission visibility.
+10. Test on two separate phones before entering real customer data.
 
-Use separate test accounts for Admin, Manager, Team Leader, Sales Executive, and Channel Partner.
+## D. Release status and limitations
 
-- Confirm each role sees only its permitted staff and customer records.
-- Confirm an employee can check in/out and submit a leave request.
-- Confirm Admin can approve/reject staff and partner requests.
-- Confirm a partner can submit a lead and see only their own leads and commission statement.
-- Confirm a disabled staff profile cannot continue after a fresh login/session verification.
-- Test follow-up and site-visit reminders on the actual Android phone, including notification permission and exact-alarm settings.
-
-## 4. Release status
-
-The APK generated by GitHub Actions is a debug build. It is suitable for internal installation/testing, not a signed production release. Before company-wide rollout, test on real devices, verify database policies with separate accounts, and prepare a signed release APK/AAB.
-
-Password-reset email delivery also depends on working Supabase SMTP configuration; verify one successful recovery email before relying on that feature.
+- GitHub Pages deployment is separate from Supabase database and Edge Function setup.
+- The Android workflow currently creates a debug APK, not a production-signed release.
+- Password recovery depends on Supabase Auth Site URL / Redirect URLs and working email delivery.
+- Android reminders must be tested on the installed app with notification permissions enabled.
