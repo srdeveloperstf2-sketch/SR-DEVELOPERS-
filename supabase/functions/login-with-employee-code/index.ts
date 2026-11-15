@@ -43,7 +43,7 @@ Deno.serve(async (req: Request) => {
     const identifier = typeof body?.identifier === "string" ? body.identifier.trim() :
       typeof body?.employeeCode === "string" ? body.employeeCode.trim() : "";
     const code = identifier.toUpperCase();
-    const digits = identifier.replace(/\\D/g, "");
+    const digits = identifier.replace(/\D/g, "");
     const mobile = digits.length === 10 ? "+91" + digits :
       digits.length === 12 && digits.startsWith("91") ? "+" + digits : "";
     const password = typeof body?.password === "string" ? body.password : "";
