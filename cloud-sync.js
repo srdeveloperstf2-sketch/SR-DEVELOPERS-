@@ -27,7 +27,14 @@
     window.srCloudReady=false;
     const {data,error}=await client.from('crm_records').select('id,record_type,payload,owner_id,created_by,updated_at');
     if(error){console.error(error);throw new Error('Cloud data load failed: '+error.message)}
-    const db=window.srDb;
+    // Recover safely if the app database was not attached to window before login.
+    let db=window.srDb;
+    if(!db || typeof db!=='object'){
+      try { db=JSON.parse(localStorage.getItem('srcrm_v11')||'{}'); } catch (_) { db={}; }
+    }
+    if(!db || typeof db!=='object' || Array.isArray(db)) db={};
+    for(const key of Object.keys(types)) if(!Array.isArray(db[key])) db[key]=[];
+    window.srDb=db;
     const seen=new Set();
     for(const row of (data||[])){
       const key=reverse[row.record_type];if(!key)continue;
@@ -37,7 +44,7 @@
       if(idx>=0)db[key][idx]=payload;else db[key].push(payload);
       seen.add(row.id);
     }
-    for(const key of Object.keys(types))db[key]=db[key]||[];
+    for(const key of Object.keys(types))if(!Array.isArray(db[key]))db[key]=[];
     localStorage.setItem('srcrm_v11',JSON.stringify(db));
     window.srCloudPersist=persist;ready=true;window.srCloudReady=true;
     const missing=[];
