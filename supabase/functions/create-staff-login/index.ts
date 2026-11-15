@@ -180,12 +180,24 @@ Deno.serve(async (req: Request) => {
     }
 
     const password = temporaryPassword();
+    if (phone) {
+      const { data: existingPhone, error: phoneLookupError } = await admin
+        .from("profiles").select("id").eq("phone", phone).limit(1);
+      if (phoneLookupError) {
+        console.error("Phone uniqueness check failed", phoneLookupError.message);
+        return json(req, { error: "Could not verify whether this mobile number is already assigned" }, 500);
+      }
+      if (existingPhone?.length) {
+        return json(req, { error: "This mobile number is already registered to another staff profile" }, 409);
+      }
+    }
+
+    // Mobile is stored in profiles only; login uses the verified email/password backend.
+    // This avoids enabling Supabase Phone/SMS OTP provider.
     const { data: created, error: createError } = await admin.auth.admin.createUser({
       email,
-      ...(phone ? { phone } : {}),
       password,
       email_confirm: true,
-      ...(phone ? { phone_confirm: false } : {}),
       user_metadata: { full_name: fullName, account_type: "staff" },
     });
     if (createError || !created.user) {
