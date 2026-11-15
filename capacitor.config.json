@@ -2,6 +2,10 @@
   "appId": "in.srdevelopers.crm",
   "appName": "S.R. DEVELOPERS CRM",
   "webDir": "www",
+  "server": {
+    "url": "https://srdeveloperstf2-sketch.github.io/SR-DEVELOPERS-/",
+    "cleartext": false
+  },
   "android": {
     "allowMixedContent": false
   }
