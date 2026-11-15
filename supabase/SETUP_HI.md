@@ -63,3 +63,19 @@ After updating `supabase/functions/create-staff-login/index.ts` in GitHub, redep
 - Password reset requires the GitHub Pages URL in Authentication → URL Configuration → Site URL and Redirect URLs.
 - Background reminders require testing on the installed Android app with notification permission enabled; browser timers cannot guarantee delivery after the browser closes.
 - A Play Store / production-signed APK requires a private Android signing keystore and passwords owned by the company. Do not share those secrets in chat. The current GitHub workflow builds a debug APK only.
+
+
+## Employee Identity + Dual Login rollout (SRD sequence)
+
+This is an additive upgrade. It does not delete existing profiles, Auth users, CRM records, attendance, leads, bookings, or payments. Existing trial profiles are deliberately left with a NULL employee_code so the first approved real employee starts at SRD0001.
+
+1. Take a Supabase database backup before the migration.
+2. Run `employee_identity_migration.sql` once in Supabase SQL Editor. It adds a unique, sequential employee_code such as SRD0001 to newly created profiles.
+3. Redeploy the updated `create-staff-login` Edge Function. It now requires a valid mobile number, stores it on the Auth user (unconfirmed until OTP), and returns the generated employeeCode.
+4. Deploy `login-with-employee-code`. The supplied `supabase/config.toml` sets `verify_jwt = false` for this public login endpoint; deploy using the Supabase CLI linked to this project so that setting is applied. The endpoint only looks up an active employee code and delegates password verification to Supabase Auth; it never returns the employee email.
+5. In Supabase Auth, enable Phone provider and configure an SMS provider before using Mobile + SMS OTP. Existing staff accounts created before this migration will need their Auth phone number added and verified by an Admin-approved process before phone OTP login works.
+6. Employee login UI supports Email + Password, SRD Employee ID + Password, and Registered Mobile + SMS OTP. The SMS OTP path depends on Supabase Auth Phone/SMS configuration.
+7. SMS + WhatsApp welcome notifications are not activated by this code-only change. Choose and configure an approved SMS and WhatsApp Business provider, sender identity, and (for WhatsApp business-initiated messages) approved template before enabling automated dual-channel delivery. Never send passwords or OTPs in group chats or store provider secrets in GitHub.
+8. Test with one newly created test employee first: verify SRD code assignment, password login, phone OTP delivery/verification, active-profile checks, and role-scoped access. Do not deactivate trial accounts until the backup and inventory are reviewed.
+
+Important: GitHub commits do not deploy Supabase Edge Functions or execute SQL migrations. Those deployment and dashboard steps must be completed separately.
