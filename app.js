@@ -127,8 +127,22 @@ window.srSetProfiles=profiles=>{
  db.staff=[...local,...mapped];render();
 };
 render();
-$('resourceForm').onsubmit=e=>{e.preventDefault();db.resources=db.resources||[];db.resources.push({project:$('shareProject').value,type:$('resourceType').value,url:$('resourceUrl').value.trim(),label:$('resourceLabel').value.trim()});save();e.target.reset();render();alert('Resource link सेव हो गया।')};
+async function uploadProjectMedia(file,project,type,label){
+ const client=window.srSupabase;
+ if(!client){throw new Error('Cloud Storage अभी configure नहीं है। पहले Supabase Storage migration चलाएँ।')}
+ if(!file)throw new Error('पहले फोटो या वीडियो चुनें।');
+ if(!/^image\//.test(file.type)&&!/^video\//.test(file.type))throw new Error('केवल फोटो या वीडियो अपलोड करें।');
+ if(file.size>100*1024*1024)throw new Error('फाइल 100 MB से छोटी होनी चाहिए।');
+ const safeName=file.name.replace(/[^a-zA-Z0-9._-]/g,'_');
+ const path=project.replace(/[^a-zA-Z0-9_-]/g,'_')+'/'+Date.now()+'_'+safeName;
+ const {data,error}=await client.storage.from('project-media').upload(path,file,{cacheControl:'3600',upsert:false,contentType:file.type});
+ if(error)throw error;
+ const {data:pub}=client.storage.from('project-media').getPublicUrl(data.path);
+ return {project,type,url:pub.publicUrl,label:label||file.name,fileName:file.name,mimeType:file.type,size:file.size,storagePath:data.path};
+}
+$('resourceForm').onsubmit=async e=>{e.preventDefault();const btn=e.submitter;btn.disabled=true;try{db.resources=db.resources||[];const file=$('resourceFile')?.files?.[0];let item;if(file){item=await uploadProjectMedia(file,$('shareProject').value,$('resourceType').value,$('resourceLabel').value.trim());}else{const url=$('resourceUrl').value.trim();if(!url)throw new Error('फोटो/वीडियो चुनें या Link URL डालें।');item={project:$('shareProject').value,type:$('resourceType').value,url,label:$('resourceLabel').value.trim()};}db.resources.push(item);save();e.target.reset();render();alert('Project Resource सेव हो गया।');}catch(err){alert('Upload नहीं हुआ: '+(err.message||err));}finally{btn.disabled=false;}};
 window.useResource=i=>{const r=(db.resources||[])[i];if(!r)return;$('shareProject').value=r.project;$('sendProject').value=r.project;$('resourceType').value=r.type;$('shareType').value=r.type;$('shareUrl').value=r.url;$('resourceLabel').value=r.label||'';$('shareMessage').value=resourceMessage(r);};
 window.deleteResource=i=>{if(!confirm('इस resource link को हटाएँ?'))return;db.resources.splice(i,1);save();render()};
 function resourceMessage(r){return 'नमस्ते! S.R. Developers की ओर से '+r.project+' की '+r.type+' जानकारी आपके लिए। '+(r.label?r.label+' ':'')+'देखने के लिए लिंक खोलें: '+r.url}
-$('shareForm').onsubmit=e=>{e.preventDefault();const l=db.leads.find(x=>x.id===$('shareLead').value);if(!l){alert('पहले ग्राहक की Lead सेव करें।');return}const phone=String(l.whatsapp||l.phone||'').replace(/[^0-9]/g,'');if(!phone){alert('ग्राहक का WhatsApp नंबर दर्ज करें।');return}const msg=$('shareMessage').value.trim()||('नमस्ते '+l.name+', S.R. Developers की ओर से '+$('sendProject').value+' की '+$('shareType').value+' जानकारी: '+$('shareUrl').value.trim());window.open('https://wa.me/'+(phone.length===10?'91'+phone:phone)+'?text='+encodeURIComponent(msg),'_blank','noopener');};
+$('shareForm').onsubmit=async e=>{e.preventDefault();const l=db.leads.find(x=>x.id===$('shareLead').value);if(!l){alert('पहले ग्राहक की Lead सेव करें।');return}const phone=String(l.whatsapp||l.phone||'').replace(/[^0-9]/g,'');if(!phone){alert('ग्राहक का WhatsApp नंबर दर्ज करें।');return}const r=(db.resources||[]).find(x=>x.url===$('shareUrl').value.trim());const msg=$('shareMessage').value.trim()||('नमस्ते '+l.name+', S.R. Developers की ओर से '+$('sendProject').value+' की '+$('shareType').value+' जानकारी: '+$('shareUrl').value.trim());if(r?.storagePath&&r.mimeType&&navigator.canShare&&navigator.share){try{const response=await fetch(r.url);const blob=await response.blob();const file=new File([blob],r.fileName||'project-media', {type:r.mimeType});if(navigator.canShare({files:[file]})){await navigator.share({files:[file],title:r.project,text:msg});return;}}catch(err){if(err.name==='AbortError')return;console.warn('Native media share fallback:',err);}}window.open('https://wa.me/'+(phone.length===10?'91'+phone:phone)+'?text='+encodeURIComponent(msg),'_blank','noopener');};
+
