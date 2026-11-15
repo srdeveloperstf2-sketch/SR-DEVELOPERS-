@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="hi">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#137a45"><title>S.R. Developers | Partner Portal</title>
+<link rel="icon" href="icon.svg"><link rel="stylesheet" href="styles.css">
+<style>
+.partner-wrap{max-width:1080px;margin:28px auto;padding:0 16px}.partner-card{background:#fff;border:1px solid #dce8df;border-radius:16px;padding:22px;margin:16px 0;box-shadow:0 8px 28px #163b2510}.partner-brand{display:flex;align-items:center;gap:12px}.partner-brand img{width:58px;height:58px;object-fit:contain}.partner-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px}.partner-grid label{display:flex;flex-direction:column;gap:6px;font-weight:600}.partner-grid input,.partner-grid select,.partner-grid textarea{width:100%;padding:12px;border:1px solid #ccd9cf;border-radius:9px;font:inherit}.partner-grid textarea{min-height:76px}.partner-stat{background:#f0f8f2;border-radius:12px;padding:16px}.partner-stat b{display:block;font-size:25px;color:#137a45}.partner-item{padding:13px 0;border-bottom:1px solid #e6eee8}.partner-muted{color:#64736a;font-size:14px}.partner-hidden{display:none!important}.partner-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}.partner-actions button,.partner-btn{background:#137a45;color:#fff;border:0;border-radius:9px;padding:11px 16px;font-weight:700;cursor:pointer}.partner-actions .secondary{background:#e9f3ec;color:#175d36}.partner-error{color:#b42318}.partner-success{color:#137a45}.partner-top{display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap}
+</style>
+</head>
+<body>
+<div class="partner-wrap">
+<header class="partner-card partner-top" style="margin:0">
+ <div class="partner-brand"><img src="assets/sr-developers-logo.svg" alt="S.R. Developers"><div><b>S.R. DEVELOPERS</b><div class="partner-muted">CHANNEL PARTNER PORTAL</div></div></div>
+ <a href="./" class="partner-muted">Employee CRM</a>
+</header>
+<section id="partnerAuth" class="partner-card">
+ <h1>Channel Partner Portal</h1><p class="partner-muted">अपने Partner Account में Login करें या Admin Approval के लिए Registration Request भेजें।</p>
+ <div class="partner-grid">
+  <form id="partnerLogin">
+   <h2>Partner Login</h2>
+   <label>Email<input id="partnerEmail" type="email" autocomplete="username" required></label>
+   <label>Password<input id="partnerPassword" type="password" autocomplete="current-password" required></label>
+   <div class="partner-actions"><button class="partner-btn" type="submit" id="partnerLoginBtn">Login करें</button><button class="secondary" type="button" id="partnerForgot">Password भूल गए?</button></div>
+  </form>
+  <form id="partnerRequest">
+   <h2>नया Partner Registration</h2>
+   <label>पूरा नाम<input id="requestName" required minlength="2"></label>
+   <label>Email<input id="requestEmail" type="email" required></label>
+   <label>मोबाइल नंबर<input id="requestPhone" required inputmode="tel"></label>
+   <label>Partner Type<select id="requestType"><option>Individual Broker</option><option>Channel Partner Agency</option><option>Firm Associate</option></select></label>
+   <label>Firm / Agency (यदि हो)<input id="requestFirm"></label>
+   <label>Area / City<input id="requestArea"></label>
+   <label>Project Interest<input id="requestProject" placeholder="जैसे Hilalpur / Mandawar"></label>
+   <label>Message<textarea id="requestMessage"></textarea></label>
+   <div class="partner-actions"><button type="submit" class="partner-btn" id="requestBtn">Approval Request भेजें</button></div>
+  </form>
+ </div>
+ <p id="partnerAuthStatus" role="status"></p>
+</section>
+<section id="partnerDashboard" class="partner-hidden">
+ <div class="partner-card partner-top"><div><h1 id="partnerWelcome">Partner Dashboard</h1><p class="partner-muted" id="partnerMeta"></p></div><div class="partner-actions"><button id="partnerChangePassword" class="secondary">Password बदलें</button><button id="partnerLogout">Logout</button></div></div>
+ <div class="partner-grid">
+  <div class="partner-stat">मेरी Leads<b id="myLeadCount">0</b></div>
+  <div class="partner-stat">मेरी Bookings पर Commission Entries<b id="myCommissionCount">0</b></div>
+  <div class="partner-stat">Pending Commission<b id="myPending">₹0</b></div>
+  <div class="partner-stat">Paid Commission<b id="myPaid">₹0</b></div>
+ </div>
+ <section class="partner-card"><h2>नया Customer Lead भेजें</h2>
+  <form id="partnerLeadForm" class="partner-grid">
+   <label>Customer Name<input id="customerName" required></label><label>Mobile Number<input id="customerPhone" required inputmode="tel"></label>
+   <label>Project<select id="customerProject"><option>Hilalpur Township</option><option>Mandawar Society</option><option>S.R. City (Tappal)</option><option>Ayodhya Project</option><option>Banchari Project</option><option>Sondh Project</option><option>Galaxy 1 (IMT Sohna)</option><option>Other</option></select></label>
+   <label>Budget (₹)<input id="customerBudget" type="number" min="0"></label><label class="wide">Requirement / Notes<textarea id="customerRequirement"></textarea></label>
+   <div class="partner-actions"><button type="submit" id="partnerLeadBtn">Lead Submit करें</button></div>
+  </form><p id="partnerLeadStatus" role="status"></p>
+ </section>
+ <section class="partner-card"><h2>मेरी Submitted Leads</h2><div id="partnerLeadList"></div></section>
+ <section class="partner-card"><h2>Commission Statement</h2><div id="partnerCommissionList"></div></section>
+</section>
+<section id="partnerPasswordBox" class="partner-card partner-hidden"><h2>नया Password सेट करें</h2><form id="partnerPasswordForm" class="partner-grid"><label>नया Password<input id="partnerNewPassword" type="password" minlength="8" required></label><label>Confirm Password<input id="partnerConfirmPassword" type="password" minlength="8" required></label><div class="partner-actions"><button type="submit">Password Save करें</button></div></form><p id="partnerPasswordStatus"></p></section>
+<footer class="partner-muted" style="text-align:center;padding:24px">© S.R. Developers Green City India (P) Ltd.</footer>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="supabase/config.js"></script><script src="partner.js?v=1"></script>
+</body></html>
