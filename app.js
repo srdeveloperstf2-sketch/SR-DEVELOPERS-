@@ -8,8 +8,61 @@ const $=id=>document.getElementById(id);const today=()=>new Date().toISOString()
 function leadOptions(id){$(id).innerHTML=db.leads.map(l=>'<option value="'+l.id+'">'+esc(l.name)+' — '+esc(l.phone)+'</option>').join('')}
 function go(tab){document.querySelectorAll('.view').forEach(v=>v.classList.toggle('active',v.id===tab));document.querySelectorAll('[data-tab]').forEach(b=>b.classList.toggle('active',b.dataset.tab===tab));window.scrollTo(0,0)}
 document.querySelectorAll('[data-tab]').forEach(b=>b.onclick=()=>go(b.dataset.tab));document.querySelectorAll('[data-go]').forEach(b=>b.onclick=()=>go(b.dataset.go));
-async function askReminderPermission(){if(window.Capacitor?.Plugins?.LocalNotifications){try{return await window.Capacitor.Plugins.LocalNotifications.requestPermissions()}catch(e){}}if('Notification'in window&&Notification.permission==='default'){try{return await Notification.requestPermission()}catch(e){}}return null}
-function scheduleFollowupReminder(item,mins){const at=new Date(item.when).getTime()-mins*60000;if(at<=Date.now())return;const id=Math.floor(Math.random()*2000000000);const title='S.R. DEVELOPERS CRM — Follow-up';const body='अब '+(db.leads.find(l=>l.id===item.lead)?.name||'ग्राहक')+' को कॉल करना है।';const plugin=window.Capacitor?.Plugins?.LocalNotifications;if(plugin){plugin.schedule({notifications:[{id,title,body,schedule:{at:new Date(at)},extra:{followupId:item.id}}]}).catch(()=>{});return}if('Notification'in window&&Notification.permission==='granted'){setTimeout(()=>{if(Date.now()>=at)new Notification(title,{body})},Math.max(0,at-Date.now()))}}
+// Native Android reminders use Capacitor Local Notifications. Browser fallback works only while this page remains open.
+let localNotifications=null;
+function getLocalNotifications(){
+ if(localNotifications)return localNotifications;
+ const cap=window.Capacitor;
+ try{
+  if(cap?.registerPlugin)localNotifications=cap.registerPlugin('LocalNotifications');
+  else localNotifications=cap?.Plugins?.LocalNotifications||null;
+ }catch(_){localNotifications=cap?.Plugins?.LocalNotifications||null}
+ return localNotifications;
+}
+async function askReminderPermission(){
+ const plugin=getLocalNotifications();
+ if(plugin){
+  try{
+   let p=await plugin.checkPermissions();
+   if(p.display!=='granted')p=await plugin.requestPermissions();
+   try{await plugin.createChannel({id:'crm-reminders',name:'CRM Reminders',description:'Client follow-up and site visit reminders',importance:5,sound:'default',vibration:true,visibility:1})}catch(_){}
+   try{const exact=await plugin.checkExactNotificationSetting();if(exact.value===false)console.warn('Exact alarm permission is not enabled on this phone.')}catch(_){}
+   return p;
+  }catch(err){console.warn('Local notification permission:',err)}
+ }
+ if('Notification'in window&&Notification.permission==='default'){try{return await Notification.requestPermission()}catch(_){}}
+ return null;
+}
+function reminderId(type,id){let s=type+':'+id,h=2166136261;for(let i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,16777619)}return (h>>>0)%2000000000+1}
+async function cancelReminder(type,id){
+ const plugin=getLocalNotifications();if(!plugin)return;
+ try{await plugin.cancel({notifications:[{id:reminderId(type,id)}]})}catch(e){console.warn('Reminder cancel:',e)}
+}
+async function scheduleReminder(type,item,mins){
+ if(mins===-1||mins===undefined||mins===null)return {ok:true,skipped:true};
+ const eventAt=new Date(item.when).getTime(),at=eventAt-(Number(mins)||0)*60000;
+ if(!Number.isFinite(eventAt)||at<=Date.now())return {ok:false,reason:'past'};
+ const lead=db.leads.find(l=>l.id===item.lead),name=lead?.name||'ग्राहक';
+ const isVisit=type==='visit';
+ const title=isVisit?'S.R. DEVELOPERS — Site Visit':'S.R. DEVELOPERS — Follow-up';
+ const action=isVisit?'ग्राहक की Site Visit है।':'ग्राहक को Follow-up Call करना है।';
+ const body=name+' · '+(item.project||lead?.project||'S.R. Developers')+' — '+action+(item.notes?' '+item.notes:'');
+ const id=reminderId(type,item.id),plugin=getLocalNotifications();
+ if(plugin){
+  try{
+   await plugin.cancel({notifications:[{id}]});
+   await plugin.schedule({notifications:[{id,title,body,smallIcon:'ic_launcher',sound:'default',channelId:'crm-reminders',schedule:{at:new Date(at),allowWhileIdle:true},extra:{type,recordId:item.id}}]});
+   return {ok:true,native:true};
+  }catch(error){console.error('Native reminder schedule failed:',error);return {ok:false,reason:error.message||'schedule_failed'}}
+ }
+ if('Notification'in window&&Notification.permission==='granted'){
+  const delay=at-Date.now();
+  if(delay>2147480000)return {ok:false,reason:'too_far'};
+  setTimeout(()=>{if(Date.now()>=at)new Notification(title,{body,tag:type+'-'+item.id})},delay);
+  return {ok:true,browser:true};
+ }
+ return {ok:false,reason:'permission'};
+}
 function contactActions(phone,leadId){const digits=String(phone||'').replace(/[^0-9]/g,'');return '<div class="contact-actions"><a href="tel:'+encodeURIComponent(phone||'')+'" data-lead="'+String(leadId||'')+'" onclick="logCall(this.dataset.lead)">📞 Call</a><a target="_blank" rel="noopener" href="https://wa.me/'+digits+'">WhatsApp</a></div>'}
 window.logCall=id=>{const lead=db.leads.find(x=>x.id===id);if(!lead)return;db.callLogs.push({id:crypto.randomUUID(),lead:id,phone:lead.phone,at:new Date().toISOString(),type:'dialer_opened'});save();render()};
 function render(){
@@ -42,10 +95,10 @@ const iq=($('inventorySearch')?.value||'').toLowerCase(), ist=$('inventoryStatus
 $('paymentList').innerHTML=db.payments.slice().reverse().map(x=>'<div class="item"><b>₹'+esc(x.amount)+' · '+esc(x.mode)+'</b><small>'+esc(nameOf(db.bookings.find(b=>b.id===x.booking)?.lead||''))+' · '+esc(x.date)+' · Receipt: '+esc(x.ref)+' · Next due: '+esc(x.due)+'</small></div>').join('')||'<p class="muted">Payment entries अभी नहीं हैं।</p>';
 $('partnerList').innerHTML=db.partners.slice().reverse().map(x=>{const pl=db.leads.filter(l=>l.partnerId===x.id),pb=db.bookings.filter(b=>pl.some(l=>l.id===b.lead)),paid=db.partnerPayouts.filter(p=>p.partner===x.id&&p.status==='Paid').reduce((a,p)=>a+Number(p.amount||0),0),pending=db.partnerPayouts.filter(p=>p.partner===x.id&&p.status!=='Paid').reduce((a,p)=>a+Number(p.amount||0),0);return '<div class="item"><b>'+esc(x.name)+' <span class="tag">'+esc(x.status)+'</span></b><small>'+esc(x.type||'Broker')+' · '+esc(x.firm)+' · '+esc(x.phone)+' · '+esc(x.project)+' · Commission '+esc(x.commission)+'%</small><small>Area: '+esc(x.area)+' · Manager: '+esc(x.manager)+' · Leads: '+pl.length+' · Bookings: '+pb.length+' · Paid: ₹'+paid+' · Pending: ₹'+pending+'</small></div>'}).join('')||'<p class="muted">Partner अभी नहीं हैं।</p>';$('payoutList').innerHTML=db.partnerPayouts.slice().reverse().map(p=>'<div class="item"><b>₹'+esc(p.amount)+' · '+esc(p.status)+'</b><small>'+esc(db.partners.find(x=>x.id===p.partner)?.name||'Partner')+' · '+esc(nameOf(db.bookings.find(x=>x.id===p.booking)?.lead||''))+' · '+esc(p.date||'Date pending')+' · '+esc(p.ref)+' · '+esc(p.notes)+'</small></div>').join('')||'<p class="muted">अभी कोई commission payout दर्ज नहीं है।</p>';
 $('projectList').innerHTML=PROJECTS.map((p,i)=>'<div class="item"><b>'+esc(p)+'</b><small>'+(i===6?'Delivered project':'Company project')+' · Leads: '+db.leads.filter(l=>l.project===p).length+'</small></div>').join('');}
-function nameOf(id){return db.leads.find(l=>l.id===id)?.name||'Lead deleted'}function list(key,fn){return db[key].slice().reverse().map(x=>'<div class="item">'+fn(x)+'<button class="tiny danger" onclick="del(\''+key+'\',\''+x.id+'\')">Delete</button></div>').join('')||'<p class="muted">अभी कोई रिकॉर्ड नहीं।</p>'}window.del=(k,id)=>{if(confirm('इस रिकॉर्ड को हटाएँ?')){db[k]=db[k].filter(x=>x.id!==id);save();render()}};
+function nameOf(id){return db.leads.find(l=>l.id===id)?.name||'Lead deleted'}function list(key,fn){return db[key].slice().reverse().map(x=>'<div class="item">'+fn(x)+'<button class="tiny danger" onclick="del(\''+key+'\',\''+x.id+'\')">Delete</button></div>').join('')||'<p class="muted">अभी कोई रिकॉर्ड नहीं।</p>'}window.del=(k,id)=>{if(confirm('इस रिकॉर्ड को हटाएँ?')){if(k==='followups')cancelReminder('followup',id);if(k==='visits')cancelReminder('visit',id);db[k]=db[k].filter(x=>x.id!==id);save();render()}};
 $('leadForm').onsubmit=e=>{e.preventDefault();const duplicate=db.leads.find(x=>String(x.phone).replace(/\D/g,'').slice(-10)===String($('lPhone').value).replace(/\D/g,'').slice(-10));if(duplicate){alert('यह मोबाइल नंबर पहले से Lead में है: '+duplicate.name+' ('+duplicate.project+'). पहले मौजूदा Lead जाँचें।');return};db.leads.push({id:crypto.randomUUID(),name:$('lName').value.trim(),phone:$('lPhone').value.trim(),project:$('lProject').value,source:$('lSource').value,partnerId:$('lPartner').value||'',budget:$('lBudget').value,minBudget:$('lMinBudget').value,whatsapp:$('lWhatsapp').value,city:$('lCity').value,address:$('lAddress').value,occupation:$('lOccupation').value,company:$('lCompany').value,propertyType:$('lType').value,size:$('lSize').value,purpose:$('lPurpose').value,timeline:$('lTimeline').value,payment:$('lPayment').value,priority:$('lPriority').value,campaign:$('lCampaign').value,status:$('lStatus').value,date:$('lDate').value,assigned:$('lAssigned').value,notes:$('lNotes').value,created:today()});e.target.reset();save();render();alert('Lead सेव हो गई।')};
-$('followForm').onsubmit=async e=>{e.preventDefault();const item={id:crypto.randomUUID(),lead:$('fLead').value,when:$('fWhen').value,notes:$('fNotes').value,reminder:$('fReminder').value};db.followups.push(item);save();await askReminderPermission();if(item.reminder==='5')scheduleFollowupReminder(item,5);e.target.reset();render();alert('Follow-up सेव हो गया। 5 मिनट पहले reminder सेट करने की कोशिश की गई है। Android में notification permission allow रखें।')};
-$('visitForm').onsubmit=e=>{e.preventDefault();db.visits.push({id:crypto.randomUUID(),lead:$('vLead').value,when:$('vWhen').value,project:$('vProject').value,assigned:$('vAssigned').value,notes:$('vNotes').value});e.target.reset();save();render()};
+$('followForm').onsubmit=async e=>{e.preventDefault();const item={id:crypto.randomUUID(),lead:$('fLead').value,when:$('fWhen').value,notes:$('fNotes').value,reminder:Number($('fReminder').value)};if(!item.lead){alert('पहले Lead जोड़ें।');return}db.followups.push(item);save();await askReminderPermission();const result=await scheduleReminder('followup',item,item.reminder);e.target.reset();render();alert(result.ok?(result.skipped?'Follow-up सेव हो गया। Reminder बंद रखा गया है.':result.native?'Follow-up सेव और फोन में alarm-style notification schedule हो गया है।':'Follow-up सेव हुआ। Browser notification तभी आएगी जब ऐप खुला रहेगा।'):'Follow-up सेव हुआ, लेकिन notification schedule नहीं हो पाया। फोन की Notification और Exact Alarm permission जाँचें।');};
+$('visitForm').onsubmit=async e=>{e.preventDefault();const item={id:crypto.randomUUID(),lead:$('vLead').value,when:$('vWhen').value,project:$('vProject').value,assigned:$('vAssigned').value,notes:$('vNotes').value,reminder:Number($('vReminder').value)};if(!item.lead){alert('पहले Lead जोड़ें।');return}db.visits.push(item);save();await askReminderPermission();const result=await scheduleReminder('visit',item,item.reminder);e.target.reset();render();alert(result.ok?(result.skipped?'Site Visit सेव हुई। Reminder बंद रखा गया है.':result.native?'Site Visit सेव और फोन में notification schedule हो गया है।':'Site Visit सेव हुई। Browser notification तभी आएगी जब ऐप खुला रहेगा।'):'Site Visit सेव हुई, लेकिन notification schedule नहीं हो पाया। फोन की Notification और Exact Alarm permission जाँचें।');};
 $('bookingForm').onsubmit=e=>{
  e.preventDefault();
  const project=$('bProject').value, unit=$('bUnit').value.trim(), status=$('bStatus').value;
