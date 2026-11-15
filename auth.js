@@ -370,7 +370,7 @@
   const otpForm=document.getElementById('phoneOtpForm');
   let pendingOtpPhone='';
   function normalizeIndiaPhone(value){
-    const digits=value.replace(/\\D/g,'');
+    const digits=value.replace(/\D/g,'');
     if(digits.length===10)return '+91'+digits;
     if(digits.length===12&&digits.startsWith('91'))return '+'+digits;
     if(value.trim().startsWith('+')&&digits.length>=8&&digits.length<=15)return '+'+digits;
@@ -394,7 +394,7 @@
     e.preventDefault();
     const token=document.getElementById('phoneOtpCode').value.trim();
     const verifyButton=document.getElementById('verifyPhoneOtp');
-    if(!pendingOtpPhone||!/^\\d{6}$/.test(token)){setState('6 अंकों का OTP सही लिखें और पहले OTP भेजें।',true);return;}
+    if(!pendingOtpPhone||!/^\d{6}$/.test(token)){setState('6 अंकों का OTP सही लिखें और पहले OTP भेजें।',true);return;}
     verifyButton.disabled=true;verifyButton.textContent='Verify हो रहा है…';
     try{
       const {data,error}=await client.auth.verifyOtp({phone:pendingOtpPhone,token,type:'sms'});
