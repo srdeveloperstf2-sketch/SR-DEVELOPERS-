@@ -310,3 +310,25 @@ footer{color:#89948d}
 }
 .portal-login-form #forgotPasswordButton:hover{background:linear-gradient(110deg,#ffd777,#eeb743)!important;color:#102d20!important}
 .portal-login-form #forgotPasswordButton:disabled{opacity:.75;color:#173b2a!important}
+
+/* Password recovery button — clean white surface with dark readable text */
+.portal-login-form #forgotPasswordButton{
+ background:#ffffff!important;
+ color:#174b32!important;
+ border:1.5px solid #8caf98!important;
+ box-shadow:0 2px 8px #173d2812!important;
+ font-weight:850!important;
+}
+.portal-login-form #forgotPasswordButton::before{
+ background:#176b43!important;
+ color:#ffffff!important;
+}
+.portal-login-form #forgotPasswordButton:hover{
+ background:#f4faf5!important;
+ color:#123d29!important;
+ border-color:#176b43!important;
+}
+.portal-login-form #forgotPasswordButton:disabled{
+ background:#ffffff!important;
+ color:#174b32!important;
+}
