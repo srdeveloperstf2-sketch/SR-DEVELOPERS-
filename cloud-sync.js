@@ -34,8 +34,8 @@
   async function init(supabase,userData,profileData){
     client=supabase;user=userData;profile=profileData;ready=false;
     window.srCloudReady=false;
-    const {data:profiles}=await client.from('profiles').select('id,full_name,role,manager_id,team_leader_id,is_active').eq('is_active',true);
-    profileByName=new Map((profiles||[]).map(p=>[String(p.full_name||'').trim().toLowerCase(),p.id]));
+    const {data:profiles}=await client.from('profiles').select('id,employee_code,full_name,role,manager_id,team_leader_id,is_active').eq('is_active',true);
+    profileByName=new Map((profiles||[]).map(p=>[String(p.full_name||'').trim().toLowerCase(),p.id]));\n    window.srEmployeeDirectory=profiles||[];
     const {data,error}=await client.from('crm_records').select('id,record_type,payload,owner_id,created_by,updated_at');
     if(error){console.error(error);throw new Error('Cloud data load failed: '+error.message)}
     // Recover safely if the app database was not attached to window before login.
