@@ -27,19 +27,12 @@
     $('scAttendancePanel').hidden=false;
     $('scLeavePanel').hidden=false;
   }
-  function fillSupervisorOptions(){
-    const managers=profiles.filter(p=>p.is_active&&p.role==='manager');
-    const leaders=profiles.filter(p=>p.is_active&&p.role==='team_leader');
-    $('scManager').innerHTML='<option value="">— कोई Manager नहीं —</option>'+managers.map(p=>'<option value="'+p.id+'">'+esc(p.full_name)+'</option>').join('');
-    $('scLeader').innerHTML='<option value="">— कोई Team Leader नहीं —</option>'+leaders.map(p=>'<option value="'+p.id+'">'+esc(p.full_name)+'</option>').join('');
-  }
   function renderTeam(){
     const visible=profiles;
     $('scTeamCount').textContent=visible.length;
     $('scActiveCount').textContent=visible.filter(p=>p.is_active).length;
     $('scManagerCount').textContent=visible.filter(p=>p.role==='manager').length;
     $('scExecCount').textContent=visible.filter(p=>p.role==='sales_executive').length;
-    fillSupervisorOptions();
     $('scTeamList').innerHTML=visible.map(p=>{
       const manager=visible.find(x=>x.id===p.manager_id)?.full_name||'—';
       const leader=visible.find(x=>x.id===p.team_leader_id)?.full_name||'—';
