@@ -181,7 +181,7 @@
     const {data,error}=await client.from('profiles').select('id,full_name,role,phone,manager_id,is_active').eq('is_active',true).order('full_name');
     if(error) console.warn('Could not load staff profiles:',error.message);
     window.srVisibleProfiles=data||[];
-    window.srActiveManagers=(data||[]).filter(p=>p.role==='manager');
+    window.srActiveManagers=(data||[]).filter(p=>['manager','team_leader'].includes(p.role));
     window.srSetProfiles?.(window.srVisibleProfiles);
     await loadSignupRequests();
   }
@@ -191,6 +191,23 @@
     if(error){target.textContent='Requests नहीं खुलीं: '+error.message;return}
     const managers=window.srActiveManagers||[];
     target.innerHTML=(data||[]).map(x=>'<div class="item"><b>'+x.full_name.replace(/[&<>"]/g,'')+'</b><small>'+x.email+' · '+(x.phone||'मोबाइल नहीं')+' · Requested: '+x.requested_role+'</small><p>'+((x.message||'').replace(/[&<>"]/g,''))+'</p><label>Admin द्वारा स्वीकृत पद<select data-role="'+x.id+'"><option value="sales_executive">Sales Executive</option><option value="team_leader">Team Leader</option><option value="manager">Manager</option></select></label><label>Reporting Manager<select data-manager="'+x.id+'"><option value="">कोई नहीं</option>'+managers.map(m=>'<option value="'+m.id+'">'+m.full_name.replace(/[&<>"]/g,'')+'</option>').join('')+'</select></label><button class="tiny" data-approve="'+x.id+'">Approve करके ID बनाएं</button><button class="tiny secondary" data-reject="'+x.id+'">Reject</button></div>').join('')||'<p class="muted">कोई Pending Request नहीं।</p>';
+    target.querySelectorAll('[data-role]').forEach(roleSelect=>{
+      const requestId=roleSelect.dataset.role;
+      const managerSelect=target.querySelector('[data-manager="'+requestId+'"]');
+      const filterSupervisors=()=>{
+        if(!managerSelect)return;
+        const role=roleSelect.value;
+        Array.from(managerSelect.options).forEach((opt,i)=>{
+          if(i===0){opt.hidden=false;return;}
+          const supervisorRole=opt.dataset.supervisorRole;
+          opt.hidden=role==='manager'||(role==='team_leader'&&supervisorRole!=='manager');
+        });
+        if(managerSelect.selectedOptions[0]?.hidden)managerSelect.value='';
+        managerSelect.disabled=role==='manager';
+      };
+      roleSelect.addEventListener('change',filterSupervisors);
+      filterSupervisors();
+    });
     target.querySelectorAll('[data-approve]').forEach(b=>b.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();approveSignup(b.dataset.approve,b);}));
     target.querySelectorAll('[data-reject]').forEach(b=>b.onclick=()=>rejectSignup(b.dataset.reject));
   }
