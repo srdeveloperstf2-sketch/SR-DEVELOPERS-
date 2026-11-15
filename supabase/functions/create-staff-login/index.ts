@@ -24,10 +24,13 @@ function json(req: Request, body: Record<string, unknown>, status = 200) {
 
 function getServerSecret(): string | null {
   // Keep privileged credentials server-side only.
+  const customSecret = Deno.env.get("SERVICE_ROLE_KEY");
+  if (customSecret) return customSecret;
+
   const legacy = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
   if (legacy) return legacy;
 
-  // Newer Supabase projects expose named server-side keys in this JSON map.
+  // Newer Supabase projects may expose named server-side keys in this JSON map.
   const keyMapRaw = Deno.env.get("SUPABASE_SECRET_KEYS");
   if (!keyMapRaw) return null;
   try {
