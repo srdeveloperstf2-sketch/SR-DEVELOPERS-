@@ -15,7 +15,7 @@
     document.querySelectorAll('.admin-only').forEach(el=>el.hidden=profile.role!=='admin');
     signOut.hidden=false;
     ensurePasswordPanel();
-    if(profile.role==='admin') initStaffAdmin();
+    // Team profiles are loaded after cloud sync in verifySession.
   };
   const showGate = () => { login.hidden=false; appHeader.hidden=true; appMain.hidden=true; if(footer)footer.hidden=true; signOut.hidden=true; };
   showGate();
@@ -144,6 +144,8 @@
       if(typeof window.srCloudInit!=='function') throw new Error('Cloud sync module लोड नहीं हुआ। पेज refresh करें।');
       const sync=await window.srCloudInit(client,session.user,data);
       showApp(session.user,data);
+      await loadVisibleTeamProfiles();
+      if(data.role==='admin') await initStaffAdmin();
       setState('Cloud sync जुड़ा है · '+sync.loaded+' रिकॉर्ड लोड · '+sync.uploaded+' अपलोड');
     } catch(syncError) {
       showGate();
@@ -169,9 +171,18 @@
     else {signupForm.reset();setState('आपकी Request Admin को भेज दी गई है। मंजूरी के बाद Login ID मिलेगी।');}
     b.disabled=false;b.textContent='नई ID के लिए Request भेजें';
   });
+  async function loadVisibleTeamProfiles(){
+    const {data,error}=await client.from('profiles').select('id,full_name,role,phone,manager_id,is_active').eq('is_active',true).order('full_name');
+    if(error){console.warn('Team directory profile load:',error.message);return;}
+    window.srVisibleProfiles=data||[];
+    window.srSetProfiles?.(window.srVisibleProfiles);
+  }
   async function initStaffAdmin(){
-    const {data}=await client.from('profiles').select('id,full_name').eq('role','manager').eq('is_active',true).order('full_name');
-    window.srActiveManagers=data||[];
+    const {data,error}=await client.from('profiles').select('id,full_name,role,phone,manager_id,is_active').eq('is_active',true).order('full_name');
+    if(error) console.warn('Could not load staff profiles:',error.message);
+    window.srVisibleProfiles=data||[];
+    window.srActiveManagers=(data||[]).filter(p=>p.role==='manager');
+    window.srSetProfiles?.(window.srVisibleProfiles);
     await loadSignupRequests();
   }
   async function loadSignupRequests(){
@@ -236,6 +247,7 @@
       const managerId=managerEl.value||null;
       const data=await createStaff({requestId,fullName:requests.full_name,email:requests.email,phone:requests.phone,role,managerId});
       showCreatedAccount(data);
+      await loadVisibleTeamProfiles();
       await loadSignupRequests();
     }catch(err){
       const message='Approval failed: '+(err?.message||String(err));
