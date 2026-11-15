@@ -19,6 +19,7 @@
     b.hidden=false;
     b.onclick=()=>{document.querySelectorAll('.view').forEach(v=>v.classList.toggle('active',v.id==='staffControl'));document.querySelectorAll('[data-tab]').forEach(x=>x.classList.toggle('active',x===b));window.scrollTo(0,0);refresh();};
     panel.hidden=false;
+    panel.classList.toggle('sc-employee-view',!canReview());
     $('scMetrics').hidden=!canReview();
     $('scTeamPanel').hidden=!canReview();
     $('scReportPanel').hidden=!canReview();
