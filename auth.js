@@ -56,7 +56,8 @@
     if(error){target.textContent='Requests नहीं खुलीं: '+error.message;return}
     const managers=window.srActiveManagers||[];
     target.innerHTML=(data||[]).map(x=>'<div class="item"><b>'+x.full_name.replace(/[&<>"]/g,'')+'</b><small>'+x.email+' · '+(x.phone||'मोबाइल नहीं')+' · Requested: '+x.requested_role+'</small><p>'+((x.message||'').replace(/[&<>"]/g,''))+'</p><label>Admin द्वारा स्वीकृत पद<select data-role="'+x.id+'"><option value="sales_executive">Sales Executive</option><option value="team_leader">Team Leader</option><option value="manager">Manager</option></select></label><label>Reporting Manager<select data-manager="'+x.id+'"><option value="">कोई नहीं</option>'+managers.map(m=>'<option value="'+m.id+'">'+m.full_name.replace(/[&<>"]/g,'')+'</option>').join('')+'</select></label><button class="tiny" data-approve="'+x.id+'">Approve करके ID बनाएं</button><button class="tiny secondary" data-reject="'+x.id+'">Reject</button></div>').join('')||'<p class="muted">कोई Pending Request नहीं।</p>';
-    target.querySelectorAll('[data-approve]').forEach(b=>b.onclick=()=>approveSignup(b.dataset.approve));\n    target.querySelectorAll('[data-reject]').forEach(b=>b.onclick=()=>rejectSignup(b.dataset.reject));
+    target.querySelectorAll('[data-approve]').forEach(b=>b.onclick=()=>approveSignup(b.dataset.approve));
+    target.querySelectorAll('[data-reject]').forEach(b=>b.onclick=()=>rejectSignup(b.dataset.reject));
   }
   async function createStaff(payload){
     const {data,error}=await client.functions.invoke('create-staff-login',{body:payload});
@@ -74,8 +75,10 @@
     try{const role=document.querySelector('[data-role=\"'+requestId+'\"]').value;const managerId=document.querySelector('[data-manager=\"'+requestId+'\"]').value||null;const data=await createStaff({requestId,fullName:requests.full_name,email:requests.email,phone:requests.phone,role,managerId});showCreatedAccount(data);await loadSignupRequests();}
     catch(err){setState('Approval failed: '+err.message,true);}
   }
-  async function rejectSignup(requestId){const {data:authData}=await client.auth.getUser();const {error}=await client.from('staff_signup_requests').update({status:'rejected',reviewed_by:authData.user.id,reviewed_at:new Date().toISOString()}).eq('id',requestId).eq('status','pending');if(error)setState('Reject नहीं हुआ: '+error.message,true);else await loadSignupRequests();}\n  document.getElementById('refreshSignupRequests').addEventListener('click',loadSignupRequests);
-\n  client.auth.onAuthStateChange((_event,session)=>{ if(session) setTimeout(()=>verifySession(session),0); else showGate(); });
+  async function rejectSignup(requestId){const {data:authData}=await client.auth.getUser();const {error}=await client.from('staff_signup_requests').update({status:'rejected',reviewed_by:authData.user.id,reviewed_at:new Date().toISOString()}).eq('id',requestId).eq('status','pending');if(error)setState('Reject नहीं हुआ: '+error.message,true);else await loadSignupRequests();}
+  document.getElementById('refreshSignupRequests').addEventListener('click',loadSignupRequests);
+
+  client.auth.onAuthStateChange((_event,session)=>{ if(session) setTimeout(()=>verifySession(session),0); else showGate(); });
   client.auth.getSession().then(({data})=>verifySession(data.session));
   form.addEventListener('submit',async e=>{
     e.preventDefault(); btn.disabled=true; btn.textContent='लॉगिन हो रहा है…'; setState('आपकी जानकारी जाँची जा रही है।');
