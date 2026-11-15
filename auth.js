@@ -36,13 +36,26 @@
   forgotButton.addEventListener('click',async()=>{
     const email=document.getElementById('loginEmail').value.trim().toLowerCase();
     if(!email){setState('पहले अपना Registered Email भरें, फिर Password भूल गए? दबाएँ।',true);document.getElementById('loginEmail').focus();return;}
+    // Validate the address before contacting Supabase to avoid malformed recovery requests.
+    const emailPattern=/^[^\\s@]+@[^\\s@]+\\.[^\\s@]{2,}$/;
+    if(!emailPattern.test(email)){setState('ईमेल पता सही फॉर्मेट में लिखें, जैसे name@example.com।',true);document.getElementById('loginEmail').focus();return;}
     forgotButton.disabled=true;forgotButton.textContent='लिंक भेजा जा रहा है…';
     try{
       const redirectTo='https://srdeveloperstf2-sketch.github.io/SR-DEVELOPERS-/';
       const {error}=await client.auth.resetPasswordForEmail(email,{redirectTo});
       if(error) throw error;
       setState('यदि यह Email अकाउंट में Registered है, तो Password Reset लिंक भेज दिया गया है। Inbox और Spam फ़ोल्डर देखें।');
-    }catch(err){setState('Reset लिंक नहीं भेजा गया: '+(err?.message||String(err)),true);}
+    }catch(err){
+      const detail=err?.message||String(err);
+      const lower=detail.toLowerCase();
+      let message='Reset लिंक नहीं भेजा गया: '+detail;
+      if(lower.includes('error sending recovery email')||lower.includes('smtp')||lower.includes('email provider')){
+        message='Supabase ईमेल सेवा अभी Reset ईमेल नहीं भेज पा रही है। Admin को Supabase → Logs → Auth में ताज़ा Error जाँचना होगा। यदि 535 Username and Password not accepted दिखे, तो SMTP Username और Google App Password ठीक करें।';
+      }else if(lower.includes('rate limit')||lower.includes('too many requests')){
+        message='ईमेल भेजने की सीमा पूरी हो गई है। अभी दोबारा प्रयास न करें; Admin को Supabase Auth की Email Rate Limits जाँचनी होंगी।';
+      }
+      setState(message,true);
+    }
     finally{forgotButton.disabled=false;forgotButton.textContent='Password भूल गए?';}
   });
   window.srSupabase=client;
