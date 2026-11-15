@@ -54,6 +54,18 @@ supabase functions deploy create-partner-login
 9. Test Channel Partner approval, partner login, own-lead visibility and commission visibility.
 10. Test on two separate phones before entering real customer data.
 
+## E. Production-signed Android APK (secure workflow added)
+
+A separate manual workflow is available at `.github/workflows/android-signed-release.yml`. It does not change the existing debug APK workflow or the Admin login.
+
+Before running it, the company must create/own an Android upload/release keystore and add these four GitHub Actions repository secrets under Settings → Secrets and variables → Actions:
+- `ANDROID_KEYSTORE_BASE64` — base64-encoded keystore file.
+- `ANDROID_KEYSTORE_PASSWORD` — keystore password.
+- `ANDROID_KEY_ALIAS` — key alias.
+- `ANDROID_KEY_PASSWORD` — key password.
+
+Never commit the keystore or passwords to GitHub, app config, or chat. Keep an encrypted offline backup of the keystore. Losing the signing key can prevent future updates to the same Android app identity. The workflow verifies the APK signature and uploads a signed release APK artifact. It cannot run successfully until the company-owned signing secrets are configured.
+
 ## D. Release status and limitations
 
 - GitHub Pages deployment is separate from Supabase database and Edge Function setup.
