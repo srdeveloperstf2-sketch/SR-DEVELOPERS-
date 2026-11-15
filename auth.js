@@ -262,7 +262,7 @@
   }
   function showCreatedAccount(data){
     const target=document.getElementById('staffAccountResult');
-    target.innerHTML='<div class="credential-box"><b>Login ID बन गई</b><p>Name: '+data.fullName+'</p><p>Employee ID: <strong>'+data.employeeCode+'</strong></p><p>Mobile: '+(data.phone||'')+'</p><p>Email: '+data.email+'</p><p>Role: '+data.role+'</p><p>Temporary Password: <strong>'+data.temporaryPassword+'</strong></p><button type="button" id="copyStaffCredentials" class="tiny secondary">Credentials Copy करें</button><p>Password निजी रूप से दें। OTP किसी से साझा न करें। पहली Login के बाद Password बदलवाएँ।</p></div>';
+    target.innerHTML='<div class="credential-box"><b>Login ID बन गई</b><p>Name: '+data.fullName+'</p><p>Employee ID: <strong>'+data.employeeCode+'</strong></p><p>Mobile: '+(data.phone||'')+'</p><p>Email: '+data.email+'</p><p>Role: '+data.role+'</p><p>Temporary Password: <strong>'+data.temporaryPassword+'</strong></p><button type="button" id="copyStaffCredentials" class="tiny secondary">Credentials Copy करें</button><p>6 अंकों का Password कर्मचारी को निजी रूप से दें। पहली Login के बाद Password बदलवाएँ।</p></div>';
     document.getElementById('copyStaffCredentials').onclick=()=>navigator.clipboard?.writeText('Employee ID: '+data.employeeCode+'\nEmail: '+data.email+'\nMobile: '+(data.phone||'')+'\nTemporary Password: '+data.temporaryPassword);
   }
   async function approveSignup(requestId, button){
