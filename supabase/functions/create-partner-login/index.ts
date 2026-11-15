@@ -28,7 +28,10 @@ Deno.serve(async(req:Request)=>{
   try{
     const url=Deno.env.get("SUPABASE_URL");
     const anon=Deno.env.get("SUPABASE_ANON_KEY")??Deno.env.get("SUPABASE_PUBLISHABLE_KEY");
-    const service=Deno.env.get("SERVICE_ROLE_KEY")??Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    const service=Deno.env.get("SERVICE_ROLE_KEY")??Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")??(()=>{
+      const raw=Deno.env.get("SUPABASE_SECRET_KEYS");if(!raw)return null;
+      try{const map=JSON.parse(raw) as Record<string,unknown>;return typeof map.default==="string"?map.default:null;}catch{return null;}
+    })();
     if(!url||!anon||!service)return json(req,{error:"Server configuration is incomplete"},500);
     const token=req.headers.get("Authorization")?.match(/^Bearer\s+(.+)$/i)?.[1];
     if(!token)return json(req,{error:"Admin login required"},401);
