@@ -30,7 +30,7 @@ Deno.serve(async(req:Request)=>{
     const anon=Deno.env.get("SUPABASE_ANON_KEY")??Deno.env.get("SUPABASE_PUBLISHABLE_KEY");
     const service=Deno.env.get("SERVICE_ROLE_KEY")??Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
     if(!url||!anon||!service)return json(req,{error:"Server configuration is incomplete"},500);
-    const token=req.headers.get("Authorization")?.match(/^Bearer\\s+(.+)$/i)?.[1];
+    const token=req.headers.get("Authorization")?.match(/^Bearer\s+(.+)$/i)?.[1];
     if(!token)return json(req,{error:"Admin login required"},401);
     const caller=createClient(url,anon,{auth:{autoRefreshToken:false,persistSession:false}});
     const {data:auth,error:authError}=await caller.auth.getUser(token);
@@ -42,7 +42,7 @@ Deno.serve(async(req:Request)=>{
     const body=await req.json().catch(()=>null) as Record<string,unknown>|null;
     const partnerId=typeof body?.partnerId==="string"?body.partnerId.trim():"";
     const email=typeof body?.email==="string"?body.email.trim().toLowerCase():"";
-    if(!UUID.test(partnerId)||! /^[^\\s@]+@[^\\s@]+\\.[^\\s@]{2,}$/.test(email)||email.length>254)
+    if(!UUID.test(partnerId)||! /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)||email.length>254)
       return json(req,{error:"Valid Partner ID and email are required"},400);
     const {data:partner,error:partnerError}=await admin.from("channel_partners")
       .select("id,partner_code,status,auth_user_id").eq("id",partnerId).maybeSingle();
