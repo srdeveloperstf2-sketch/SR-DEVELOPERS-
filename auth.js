@@ -75,8 +75,20 @@
   }
   async function createStaff(payload){
     const {data,error}=await client.functions.invoke('create-staff-login',{body:payload});
-    if(error)throw new Error(error.message);
-    if(data?.error)throw new Error(data.error);
+    if(error){
+      let detail=error.message||'Function request failed';
+      try{
+        const response=error.context;
+        if(response && typeof response.json==='function'){
+          const body=await response.clone().json();
+          detail=body?.detail
+            ? (body.error||detail)+': '+body.detail+(body.code?' ('+body.code+')':'')
+            : (body?.error||body?.message||detail);
+        }
+      }catch(_){}
+      throw new Error(detail);
+    }
+    if(data?.error)throw new Error(data.detail ? data.error+': '+data.detail : data.error);
     return data;
   }
   function showCreatedAccount(data){
