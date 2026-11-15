@@ -291,6 +291,52 @@
   }
   async function rejectSignup(requestId){const {data:authData}=await client.auth.getUser();const {error}=await client.from('staff_signup_requests').update({status:'rejected',reviewed_by:authData.user.id,reviewed_at:new Date().toISOString()}).eq('id',requestId).eq('status','pending');if(error)setState('Reject नहीं हुआ: '+error.message,true);else await loadSignupRequests();}
   document.getElementById('refreshSignupRequests').addEventListener('click',loadSignupRequests);
+  // Admin-created staff accounts use the same approved-request workflow and server-side provisioning.
+  const directStaffForm=document.getElementById('directStaffForm');
+  const directStaffRole=document.getElementById('directStaffRole');
+  const directStaffManager=document.getElementById('directStaffManager');
+  const directStaffManagerWrap=document.getElementById('directStaffManagerWrap');
+  function refreshDirectStaffManagers(){
+    if(!directStaffManager||!directStaffRole)return;
+    const role=directStaffRole.value;
+    const managers=window.srActiveManagers||[];
+    directStaffManager.innerHTML='<option value="">Reporting Manager चुनें</option>'+managers
+      .filter(m=>m.is_active&&(role==='team_leader'?m.role==='manager':['manager','team_leader'].includes(m.role)))
+      .map(m=>'<option value="'+m.id+'">'+m.full_name.replace(/[&<>"]/g,'')+' · '+(m.role==='manager'?'Manager':'Team Leader')+'</option>').join('');
+    directStaffManager.disabled=role==='manager';
+    directStaffManagerWrap.hidden=role==='manager';
+  }
+  if(directStaffRole)directStaffRole.addEventListener('change',refreshDirectStaffManagers);
+  if(directStaffForm)directStaffForm.addEventListener('submit',async e=>{
+    e.preventDefault();
+    const button=document.getElementById('directStaffCreate');
+    const name=document.getElementById('directStaffName').value.trim();
+    const email=document.getElementById('directStaffEmail').value.trim().toLowerCase();
+    const phone=document.getElementById('directStaffPhone').value.trim();
+    const role=directStaffRole.value;
+    const managerId=role==='manager'?null:(directStaffManager.value||null);
+    if(name.length<2||!email){setState('कर्मचारी का नाम और सही Email भरें।',true);return;}
+    if(role!=='manager'&&!managerId){setState('इस Role के लिए Reporting Manager चुनना जरूरी है।',true);return;}
+    button.disabled=true;button.textContent='Login ID बनाई जा रही है…';
+    try{
+      const {data:request,error:requestError}=await client.from('staff_signup_requests').insert({
+        full_name:name,email,phone:phone||null,requested_role:role,
+        message:'Admin द्वारा सीधे बनाया गया Staff Login',status:'pending'
+      }).select('id').single();
+      if(requestError)throw new Error('Staff request सेव नहीं हुई: '+requestError.message);
+      const created=await createStaff({requestId:request.id,role,managerId});
+      showCreatedAccount(created);
+      directStaffForm.reset();refreshDirectStaffManagers();
+      await initStaffAdmin();
+      setState('कर्मचारी की Login ID सफलतापूर्वक बनाई गई। Temporary Password अभी सुरक्षित कर लें।');
+    }catch(err){
+      const message='Login ID नहीं बनी: '+(err?.message||String(err));
+      setState(message,true);
+      const result=document.getElementById('staffAccountResult');
+      if(result)result.textContent=message+' यदि Pending Request बनी है, तो Requests Refresh करके उसे approve किया जा सकता है।';
+    }finally{button.disabled=false;button.textContent='Login ID बनाएँ';}
+  });
+
 
   client.auth.getSession().then(({data})=>{if(!passwordRecoveryMode) verifySession(data.session);});
   form.addEventListener('submit',async e=>{
