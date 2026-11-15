@@ -16,11 +16,14 @@
     const b=document.createElement('button');
     b.type='button';b.dataset.tab='staffControl';b.textContent='Staff Control';
     if(!tabs.querySelector('[data-tab="staffControl"]'))tabs.appendChild(b);
-    b.hidden=!canReview();
+    b.hidden=false;
     b.onclick=()=>{document.querySelectorAll('.view').forEach(v=>v.classList.toggle('active',v.id==='staffControl'));document.querySelectorAll('[data-tab]').forEach(x=>x.classList.toggle('active',x===b));window.scrollTo(0,0);refresh();};
-    panel.hidden=!canReview();
+    panel.hidden=false;
+    $('scMetrics').hidden=!canReview();
+    $('scTeamPanel').hidden=!canReview();
+    $('scReportPanel').hidden=!canReview();
     $('scAdminPanel').hidden=!canAdmin();
-    $('scAdminNote').hidden=canAdmin();
+    $('scAdminNote').hidden=canReview();
     $('scAttendancePanel').hidden=false;
     $('scLeavePanel').hidden=false;
   }
