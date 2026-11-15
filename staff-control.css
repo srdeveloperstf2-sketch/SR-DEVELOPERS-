@@ -39,3 +39,5 @@
 #scStatus.error{color:#b52b32}
 .sc-note{background:#f1f6f2;border:1px solid #dce9df;border-radius:10px;padding:11px;font-size:11px;color:#53675a;line-height:1.5}
 @media(min-width:720px){.sc-metrics{grid-template-columns:repeat(4,minmax(0,1fr))}.sc-layout{grid-template-columns:1.2fr .8fr}.sc-hero{padding:25px}.sc-hero h2{font-size:29px}}
+
+.sc-employee-view .sc-layout{grid-template-columns:1fr}.sc-employee-view #scTeamPanel,.sc-employee-view #scReportPanel,.sc-employee-view #scMetrics{display:none}
