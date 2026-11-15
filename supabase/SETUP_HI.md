@@ -45,3 +45,21 @@ After the database setup and Admin profile are created, run `app_cloud_sync_migr
 6. Give the temporary password to the employee privately. Ask them to change it after first login. Do not send passwords in group chats.
 
 Roles available to staff signup: Manager, Team Leader, Sales Executive. Admin role is never self-selectable.
+
+
+## Final hardening and reporting hierarchy
+
+Run `final_hardening_migration.sql` once in SQL Editor after the three migrations above. It:
+- Adds the reporting tree support for Manager → Team Leader → Sales Executive.
+- Updates profile and cloud-record visibility to include a user's reporting tree.
+- Adds a database unique index to prevent duplicate active project + plot/unit bookings.
+
+If the unique index reports duplicate data, do not delete records blindly. Identify and resolve the duplicate active bookings first, then rerun this migration.
+
+After updating `supabase/functions/create-staff-login/index.ts` in GitHub, redeploy the `create-staff-login` Edge Function from Supabase → Edge Functions → create-staff-login → Code → Deploy updates. The GitHub edit alone does not deploy the function to Supabase.
+
+## Remaining production checks
+
+- Password reset requires the GitHub Pages URL in Authentication → URL Configuration → Site URL and Redirect URLs.
+- Background reminders require testing on the installed Android app with notification permission enabled; browser timers cannot guarantee delivery after the browser closes.
+- A Play Store / production-signed APK requires a private Android signing keystore and passwords owned by the company. Do not share those secrets in chat. The current GitHub workflow builds a debug APK only.
