@@ -30,12 +30,12 @@ as $$
 $$;
 
 create or replace function public.can_access_profile(target uuid)
-returns boolean language sql stable security definer set search_path=public,auth as $
+returns boolean language sql stable security definer set search_path=public,auth as $func$
   select public.is_admin() or target=auth.uid() or public.is_in_my_team(target)
-$;
+$func$;
 
 create or replace function public.can_access_lead(target uuid)
-returns boolean language sql stable security definer set search_path=public,auth as $
+returns boolean language sql stable security definer set search_path=public,auth as $func$
   select public.is_admin() or exists(
     select 1 from public.leads l
     where l.id=target and (
@@ -44,7 +44,7 @@ returns boolean language sql stable security definer set search_path=public,auth
       or public.is_in_my_team(l.assigned_to)
     )
   )
-$;
+$func$;
 grant execute on function public.can_access_lead(uuid) to authenticated;
 
 drop policy if exists profiles_read_scope on public.profiles;
