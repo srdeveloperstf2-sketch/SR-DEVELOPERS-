@@ -13,9 +13,8 @@
   const activeProfiles = () => profiles.filter(p=>p.is_active);
   function navVisibility(){
     const tabs=document.querySelector('#tabs');
-    const b=document.createElement('button');
-    b.type='button';b.dataset.tab='staffControl';b.textContent='Staff Control';
-    if(!tabs.querySelector('[data-tab="staffControl"]'))tabs.appendChild(b);
+    let b=tabs.querySelector('[data-tab="staffControl"]');
+    if(!b){b=document.createElement('button');b.type='button';b.dataset.tab='staffControl';b.textContent='Staff Control';tabs.appendChild(b);}
     b.hidden=false;
     b.onclick=()=>{document.querySelectorAll('.view').forEach(v=>v.classList.toggle('active',v.id==='staffControl'));document.querySelectorAll('[data-tab]').forEach(x=>x.classList.toggle('active',x===b));window.scrollTo(0,0);refresh();};
     panel.hidden=false;
@@ -146,7 +145,6 @@
     renderTeam();renderAttendance();renderLeaves();renderReport();
     if(!a.error&&!l.error)status('Staff Control अपडेट है · '+profiles.length+' visible profiles');
   }
-  $('scAttendanceDate').value=today();
   $('scLeaveStart').value=today();$('scLeaveEnd').value=today();
   window.srStaffControlRefresh=refresh;
   $('scCheckIn').onclick=()=>attendanceAction('in');
