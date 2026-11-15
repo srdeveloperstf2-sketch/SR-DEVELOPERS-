@@ -294,3 +294,19 @@ footer{color:#89948d}
  .portal-login-form label{font-size:13px}
  .portal-login-form input{padding:12px}
 }
+
+/* High-visibility Password Forgot action */
+.portal-login-form #forgotPasswordButton{
+ display:inline-flex;align-items:center;justify-content:center;gap:7px;
+ width:auto;min-width:154px;min-height:42px;margin:3px auto 2px;padding:10px 18px;
+ color:#173b2a!important;background:linear-gradient(110deg,#ffe29a,#f4c45e)!important;
+ border:1px solid #d5a33d!important;border-radius:10px;
+ box-shadow:0 3px 10px #a979222b!important;font-size:13px;font-weight:850;
+ letter-spacing:.1px;text-shadow:none;
+}
+.portal-login-form #forgotPasswordButton::before{
+ content:"?";display:inline-grid;place-items:center;width:18px;height:18px;
+ border-radius:50%;background:#173b2a;color:#fff;font-size:12px;font-weight:900;
+}
+.portal-login-form #forgotPasswordButton:hover{background:linear-gradient(110deg,#ffd777,#eeb743)!important;color:#102d20!important}
+.portal-login-form #forgotPasswordButton:disabled{opacity:.75;color:#173b2a!important}
