@@ -51,8 +51,8 @@ function getServerSecret(): string | null {
 function temporaryPassword(): string {
   const bytes = new Uint8Array(4);
   crypto.getRandomValues(bytes);
-  const value = new DataView(bytes.buffer).getUint32(0, false) % 100000000;
-  return String(value).padStart(8, "0");
+  const value = new DataView(bytes.buffer).getUint32(0, false) % 1000000;
+  return String(value).padStart(6, "0");
 }
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
