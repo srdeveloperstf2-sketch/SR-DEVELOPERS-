@@ -37,7 +37,7 @@
     const email=document.getElementById('loginEmail').value.trim().toLowerCase();
     if(!email || /^SRD[0-9]{4,}$/i.test(email)){setState('Password Reset के लिए अपना Registered Email भरें।',true);document.getElementById('loginEmail').focus();return;}
     // Validate the address before contacting Supabase to avoid malformed recovery requests.
-    const emailPattern=/^[^\s@]+@[^\s@]+\\.[^\s@]{2,}$/;
+    const emailPattern=/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
     if(!emailPattern.test(email)){setState('ईमेल पता सही फॉर्मेट में लिखें, जैसे name@example.com।',true);document.getElementById('loginEmail').focus();return;}
     forgotButton.disabled=true;forgotButton.textContent='लिंक भेजा जा रहा है…';
     try{
