@@ -184,3 +184,77 @@ footer{color:#89948d}
 .portal-register-panel p{font-size:10px}
 .portal-footer{text-align:center;font-size:9px;color:#9aa49d;margin-top:12px}
 @media(max-width:380px){.portal-card{padding:17px 15px}.portal-brand img{width:57px}.portal-brand h1{font-size:15px}}
+
+
+/* Login portal — high-contrast premium green, ivory and warm-gold finish */
+.auth-gate{
+ background:
+  radial-gradient(ellipse at 12% 8%,#dcefe3 0,transparent 42%),
+  radial-gradient(ellipse at 92% 92%,#f5ead5 0,transparent 34%),
+  #f5f7f4;
+}
+.portal-card{
+ width:min(100%,420px);
+ padding:23px 24px 18px;
+ border:1px solid #dbe7dd;
+ border-radius:22px;
+ background:#fff;
+ box-shadow:0 18px 48px #173d2820,0 2px 8px #173d2808;
+}
+.portal-brand{margin-bottom:18px}
+.portal-brand img{width:74px;height:64px}
+.portal-brand span{font-size:10px;color:#5d7064;letter-spacing:2.1px}
+.portal-brand h1{font-size:18px;color:#123f2c;font-weight:850;letter-spacing:.2px}
+.portal-brand small{font-size:10px;color:#617267;font-weight:650}
+.portal-heading{margin:10px 0 16px}
+.portal-heading h2{font-size:22px;font-weight:850;color:#173d2b;letter-spacing:-.35px}
+.portal-heading p{font-size:13px;color:#53665a;line-height:1.5}
+.portal-choices{gap:10px;margin:14px 0 17px}
+.portal-choice{
+ min-height:88px;padding:13px 8px;
+ background:#f7f9f7;border:1px solid #d8e3da;border-radius:14px;
+ color:#244533;transition:background .15s,border-color .15s,transform .15s;
+}
+.portal-choice.active{
+ background:linear-gradient(145deg,#e9f5ec,#f4f8f2);
+ border:2px solid #278052;color:#145b37;
+ box-shadow:inset 0 0 0 1px #ffffff,0 4px 12px #176b4512;
+}
+.portal-choice.partner-choice{background:#fffaf0;border-color:#e8d9b8;color:#624a24}
+.portal-choice.partner-choice:hover{background:#fff5df;border-color:#c49a50}
+.portal-choice b{font-size:14px;font-weight:800}
+.portal-choice small{font-size:11px;line-height:1.35;color:#52665a}
+.portal-choice.partner-choice small{color:#705b37}
+.portal-icon{font-size:23px}
+.portal-login-form{gap:11px}
+.portal-login-form label{font-size:13px;font-weight:750;color:#263f30}
+.portal-login-form input{
+ min-height:46px;padding:12px 13px;border:1px solid #cbd9ce;
+ border-radius:10px;background:#fff;color:#1d3327;font-size:15px;
+}
+.portal-login-form input::placeholder{color:#78877d;opacity:1}
+.portal-login-form input:focus{border-color:#278052;box-shadow:0 0 0 3px #27805220}
+.portal-login-form button{
+ min-height:47px;margin-top:5px;padding:13px;
+ background:linear-gradient(105deg,#176b43,#238657);
+ color:#fff;font-size:14px;font-weight:800;letter-spacing:.15px;
+ box-shadow:0 5px 13px #176b4328;
+}
+.portal-login-form button:hover{background:linear-gradient(105deg,#125637,#1d754a)}
+.portal-card #authStatus{font-size:12px;color:#53665a;line-height:1.55;margin:11px 0}
+.portal-register{border-top:1px solid #e4ebe5;padding-top:13px;font-size:12px;color:#526459}
+.portal-text-btn{font-size:12px;color:#176b43;text-decoration:underline;text-underline-offset:3px}
+.portal-register-panel{background:#f7faf7;border-color:#d9e6dc;padding:14px}
+.portal-register-panel h3{font-size:15px;color:#1c452f}
+.portal-register-panel label{font-size:12px;color:#334d3c;font-weight:700}
+.portal-register-panel input,.portal-register-panel select,.portal-register-panel textarea{
+ min-height:40px;font-size:13px;color:#20382a;border:1px solid #cfdbd1;
+}
+.portal-register-panel p{font-size:11px;color:#596b5f;line-height:1.5}
+.portal-footer{font-size:10px;color:#66776b;font-weight:600;letter-spacing:.1px}
+@media(max-width:380px){
+ .portal-card{padding:18px 15px 15px}
+ .portal-brand img{width:61px;height:56px}
+ .portal-brand h1{font-size:16px}
+ .portal-choice{min-height:84px}
+}
