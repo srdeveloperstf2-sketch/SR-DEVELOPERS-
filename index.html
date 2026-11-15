@@ -1,4 +1,4 @@
-<!doctype html><html lang="hi"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#126b45"><link rel="manifest" href="manifest.webmanifest"><link rel="stylesheet" href="styles.css"><title>S.R. DEVELOPERS CRM</title></head><body>
+<!doctype html><html lang="hi"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#126b45"><link rel="manifest" href="manifest.webmanifest"><link rel="stylesheet" href="styles.css"><link rel="stylesheet" href="staff-control.css?v=20261115-1"><title>S.R. DEVELOPERS CRM</title></head><body>
 <section id="authGate" class="auth-gate" hidden><div class="auth-card"><img src="assets/sr-developers-logo.svg" alt="S.R. Developers"><h1>S.R. DEVELOPERS CRM</h1><p>कर्मचारी Login</p><form id="loginForm"><label>Email<input id="loginEmail" type="email" autocomplete="username" required></label><label>Password<input id="loginPassword" type="password" autocomplete="current-password" required></label><button id="loginButton" class="wide">Login करें</button></form><p id="authStatus" role="status">अपने कंपनी अकाउंट से Login करें।</p><p class="muted" style="text-align:center;margin-top:14px">क्या आप Channel Partner हैं? <a href="partner.html">Partner Portal पर जाएँ</a></p><div class="auth-divider">कंपनी में नई ID चाहिए?</div><section id="employeeReg"><h3>कर्मचारी Registration</h3><form id="signupForm"><label>पूरा नाम<input id="signupName" required minlength="2"></label><label>Email<input id="signupEmail" type="email" required></label><label>मोबाइल नंबर<input id="signupPhone" inputmode="tel"></label><label>किस पद के लिए आवेदन?<select id="signupRole"><option value="sales_executive">Sales Executive</option><option value="team_leader">Team Leader</option><option value="manager">Manager</option></select></label><label class="wide">Admin के लिए संदेश<textarea id="signupMessage" placeholder="टीम / लोकेशन / जानकारी"></textarea></label><button class="wide secondary" id="signupButton">नई Employee ID के लिए Request भेजें</button></form><p class="muted">Request Admin की मंजूरी के बाद ही Login ID बनेगी। Self-signup से Admin अधिकार नहीं मिलेंगे।</p></section></div></section><header hidden><div class="brand"><span class="brand-logo"><img src="assets/sr-developers-logo.svg" alt="S.R. Developers logo"></span><div><b>S.R. DEVELOPERS</b><small>REAL ESTATE CRM</small></div></div><div class="session-tools"><span id="sessionUser" class="pill"></span><button id="signOut" class="tiny secondary" hidden>Logout</button></div></header>
 <main><section class="welcome"><p>SR DEVELOPERS • GURUGRAM</p><h1>Business Dashboard</h1><span>Sales, follow-ups और team operations एक जगह</span></section>
 <div class="warning"><b>महत्वपूर्ण:</b> Admin Login सफल है। वास्तविक ग्राहक डेटा दर्ज करने से पहले दूसरे कर्मचारी अकाउंट और दूसरे मोबाइल पर Data Sync तथा Role Permissions का परीक्षण पूरा करें।</div>
@@ -28,4 +28,47 @@
 <label>Loan Tenure (Years)<input id="emiYears" type="number" min="1" max="40" value="20" required></label>
 <button class="wide" type="submit">EMI Calculate करें</button></form>
 <div id="emiResult" aria-live="polite" class="item"><b>Estimated EMI: —</b></div>
-<p class="muted">Stamp duty, registration, processing fee, insurance और अन्य शुल्क इसमें शामिल नहीं हैं। वास्तविक दर और पात्रता बैंक/वित्तीय संस्था से जाँचें।</p></div></section></main><footer>© S.R. Developers Green City India (P) Ltd.</footer><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="supabase/config.js"></script><script src="app.js?v=20261115-11"></script><script src="emi.js?v=20261115-1"></script><script src="cloud-sync.js?v=20261115-10"></script><script src="auth.js?v=20261115-11"></script><script>if('serviceWorker'in navigator)navigator.serviceWorker.register('./sw.js');</script></body></html>
+<p class="muted">Stamp duty, registration, processing fee, insurance और अन्य शुल्क इसमें शामिल नहीं हैं। वास्तविक दर और पात्रता बैंक/वित्तीय संस्था से जाँचें।</p></div></section>
+<section id="staffControl" class="view" hidden>
+  <div class="sc-hero"><div><div class="sc-kicker">People • Performance • Operations</div><h2>Staff Control Center</h2><p>कर्मचारी, टीम, Attendance, Leave और Performance एक जगह</p></div><div class="sc-hero-mark">SR</div></div>
+  <div class="sc-metrics">
+    <div class="sc-metric"><small>Visible Employees</small><b id="scTeamCount">0</b></div>
+    <div class="sc-metric"><small>Active Staff</small><b id="scActiveCount">0</b></div>
+    <div class="sc-metric"><small>Managers</small><b id="scManagerCount">0</b></div>
+    <div class="sc-metric"><small>Sales Executives</small><b id="scExecCount">0</b></div>
+  </div>
+  <div id="scStatus" role="status">Staff Control डेटा लोड होने की प्रतीक्षा में…</div>
+  <div id="scAdminPanel" class="sc-panel" hidden>
+    <div class="sc-section-head"><div><h3>Admin — Employee & Account Control</h3><p class="muted">Role, reporting structure और सक्रिय Login नियंत्रित करें।</p></div><span class="sc-chip good">ADMIN</span></div>
+    <div class="sc-note">नई Login ID बनाने और Signup Request approve करने के लिए नीचे Team सेक्शन में मौजूदा Staff Login ID Management का उपयोग करें। कर्मचारी को Deactivate करने पर अगली Login verification में CRM access बंद होगा। Auth user को delete नहीं किया जाता।</div>
+  </div>
+  <p id="scAdminNote" class="sc-note" hidden>आपको केवल अपनी Role के अनुसार टीम दिखाई देगी। Admin ही कर्मचारी की Role, Reporting Manager और Login Active/Inactive बदल सकता है।</p>
+  <div class="sc-layout">
+    <div class="sc-panel">
+      <div class="sc-section-head"><div><h3>Team Directory & Reporting</h3><p class="muted">कर्मचारी किस Manager और Team Leader के अंतर्गत है।</p></div><span class="sc-chip">LIVE</span></div>
+      <div id="scTeamList"></div>
+    </div>
+    <div>
+      <div id="scAttendancePanel" class="sc-panel">
+        <h3>My Attendance</h3><p id="scTodayAttendance" class="muted">आज की स्थिति लोड हो रही है…</p>
+        <div class="sc-attendance-actions"><button id="scCheckIn" type="button">✓ Check In</button><button id="scCheckOut" type="button" class="secondary">Check Out</button></div>
+        <div id="scAttendanceList"></div>
+      </div>
+      <div id="scLeavePanel" class="sc-panel">
+        <h3>Leave Request</h3><p class="muted">छुट्टी का आवेदन भेजें और उसकी स्थिति देखें।</p>
+        <form id="scLeaveForm">
+          <label>Leave Type<select id="scLeaveType"><option value="casual">Casual Leave</option><option value="sick">Sick Leave</option><option value="earned">Earned Leave</option><option value="unpaid">Unpaid Leave</option><option value="other">Other</option></select></label>
+          <label>From<input id="scLeaveStart" type="date" required></label>
+          <label>To<input id="scLeaveEnd" type="date" required></label>
+          <label class="wide">Reason<textarea id="scLeaveReason" minlength="3" maxlength="1000" required placeholder="छुट्टी का कारण लिखें"></textarea></label>
+          <button class="wide" type="submit">Leave Request भेजें</button>
+        </form>
+        <div id="scLeaveList"></div>
+      </div>
+    </div>
+  </div>
+  <div class="sc-panel">
+    <div class="sc-section-head"><div><h3>Employee Performance Report</h3><p id="scReportHint" class="muted">Lead, Follow-up, Visit, Booking और Attendance की रिपोर्ट।</p></div><button type="button" class="tiny secondary" onclick="window.srStaffControlRefresh?.()">Refresh</button></div>
+    <div class="sc-table-wrap"><table class="sc-table"><thead><tr><th>Employee</th><th>Role</th><th>Leads</th><th>Follow-ups</th><th>Visits</th><th>Bookings</th><th>Attendance Days</th></tr></thead><tbody id="scReportTable"><tr><td colspan="7">डेटा लोड हो रहा है…</td></tr></tbody></table></div>
+  </div>
+</section></main><footer>© S.R. Developers Green City India (P) Ltd.</footer><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="supabase/config.js"></script><script src="app.js?v=20261115-11"></script><script src="emi.js?v=20261115-1"></script><script src="cloud-sync.js?v=20261115-10"></script><script src="auth.js?v=20261115-12"></script><script src="staff-control.js?v=20261115-1"></script><script>if('serviceWorker'in navigator)navigator.serviceWorker.register('./sw.js');</script></body></html>
