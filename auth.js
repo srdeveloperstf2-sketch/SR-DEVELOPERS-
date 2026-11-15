@@ -17,7 +17,7 @@
     ensurePasswordPanel();
     // Team profiles are loaded after cloud sync in verifySession.
   };
-  const showGate = () => { login.hidden=false; appHeader.hidden=true; appMain.hidden=true; if(footer)footer.hidden=true; signOut.hidden=true; };
+  const showGate = () => { window.srCurrentProfile=null; login.hidden=false; appHeader.hidden=true; appMain.hidden=true; if(footer)footer.hidden=true; signOut.hidden=true; };
   showGate();
   if (!cfg.url || !cfg.publishableKey || !window.supabase) {
     setState('Supabase configuration missing. Admin से संपर्क करें।',true); return;
@@ -156,10 +156,12 @@
     try {
       if(typeof window.srCloudInit!=='function') throw new Error('Cloud sync module लोड नहीं हुआ। पेज refresh करें।');
       const sync=await window.srCloudInit(client,session.user,data);
+      window.srCurrentProfile={id:session.user.id,email:session.user.email,...data};
       showApp(session.user,data);
       await loadVisibleTeamProfiles();
       if(data.role==='admin') await initStaffAdmin();
       setState('Cloud sync जुड़ा है · '+sync.loaded+' रिकॉर्ड लोड · '+sync.uploaded+' अपलोड');
+      window.dispatchEvent(new CustomEvent('sr-auth-ready',{detail:window.srCurrentProfile}));
     } catch(syncError) {
       showGate();
       setState('Cloud Sync शुरू नहीं हुआ: '+(syncError?.message||String(syncError))+' — Admin से संपर्क करें।',true);
