@@ -25,16 +25,27 @@
       }
     }
     if(!rows.length)return;
-    queue=queue.then(async()=>{
+    // Keep the queue usable after a failed write, but never report a failed
+    // cloud write as a successful sync to the caller.
+    const task=queue.catch(()=>{}).then(async()=>{
       const {error}=await client.from('crm_records').upsert(rows,{onConflict:'id'});
       if(error)throw error;
-    }).catch(err=>{console.error('CRM cloud sync:',err);window.dispatchEvent(new CustomEvent('sr-cloud-error',{detail:err.message}));});
-    return queue;
+      return {synced:rows.length};
+    });
+    queue=task;
+    try {
+      return await task;
+    } catch(err) {
+      console.error('CRM cloud sync:',err);
+      window.dispatchEvent(new CustomEvent('sr-cloud-error',{detail:err?.message||String(err)}));
+      throw err;
+    }
   }
   async function init(supabase,userData,profileData){
     client=supabase;user=userData;profile=profileData;ready=false;
     window.srCloudReady=false;
-    const {data:profiles}=await client.from('profiles').select('id,employee_code,full_name,role,manager_id,team_leader_id,is_active').eq('is_active',true);
+    const {data:profiles,error:profilesError}=await client.from('profiles').select('id,employee_code,full_name,role,manager_id,team_leader_id,is_active').eq('is_active',true);
+    if(profilesError) throw new Error('Staff directory load failed: '+profilesError.message);
     profileByName=new Map((profiles||[]).map(p=>[String(p.full_name||'').trim().toLowerCase(),p.id]));
     window.srEmployeeDirectory=profiles||[];
     const {data,error}=await client.from('crm_records').select('id,record_type,payload,owner_id,created_by,updated_at');
