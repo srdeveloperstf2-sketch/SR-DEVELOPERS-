@@ -38,7 +38,7 @@
     if(!email){setState('पहले अपना Registered Email भरें, फिर Password भूल गए? दबाएँ।',true);document.getElementById('loginEmail').focus();return;}
     forgotButton.disabled=true;forgotButton.textContent='लिंक भेजा जा रहा है…';
     try{
-      const redirectTo=window.location.origin+window.location.pathname;
+      const redirectTo='https://srdeveloperstf2-sketch.github.io/SR-DEVELOPERS-/';
       const {error}=await client.auth.resetPasswordForEmail(email,{redirectTo});
       if(error) throw error;
       setState('यदि यह Email अकाउंट में Registered है, तो Password Reset लिंक भेज दिया गया है। Inbox और Spam फ़ोल्डर देखें।');
@@ -46,6 +46,48 @@
     finally{forgotButton.disabled=false;forgotButton.textContent='Password भूल गए?';}
   });
   window.srSupabase=client;
+  // Handle Supabase PASSWORD_RECOVERY callback without requiring a staff profile first.
+  const recoveryBox=document.createElement('section');
+  recoveryBox.id='passwordRecoveryBox';
+  recoveryBox.className='panel';
+  recoveryBox.hidden=true;
+  recoveryBox.innerHTML='<h3>नया Password सेट करें</h3><form id="passwordRecoveryForm"><label>नया Password (कम-से-कम 8 अक्षर)<input id="recoveryPassword" type="password" minlength="8" autocomplete="new-password" required></label><label>नया Password दोबारा लिखें<input id="recoveryPasswordConfirm" type="password" minlength="8" autocomplete="new-password" required></label><p id="recoveryStatus" role="status"></p><button class="wide" id="recoverySave" type="submit">नया Password सुरक्षित करें</button></form>';
+  const authCard=document.querySelector('.auth-card');
+  if(authCard) authCard.insertBefore(recoveryBox,authCard.firstChild);
+  recoveryBox.querySelector('#passwordRecoveryForm').addEventListener('submit',async e=>{
+    e.preventDefault();
+    const p=document.getElementById('recoveryPassword').value;
+    const q=document.getElementById('recoveryPasswordConfirm').value;
+    const out=document.getElementById('recoveryStatus');
+    const save=document.getElementById('recoverySave');
+    if(p.length<8){out.textContent='Password कम-से-कम 8 अक्षर का रखें।';return;}
+    if(p!==q){out.textContent='दोनों Password एक जैसे नहीं हैं।';return;}
+    save.disabled=true;save.textContent='सुरक्षित हो रहा है…';
+    try{
+      const {error}=await client.auth.updateUser({password:p});
+      if(error) throw error;
+      out.textContent='Password सफलतापूर्वक बदल गया। अब Login करें।';
+      recoveryBox.hidden=true;
+      const lf=document.getElementById('loginForm'); if(lf) lf.hidden=false;
+      const reg=document.getElementById('employeeReg'); if(reg) reg.hidden=false;
+      const divider=document.querySelector('.auth-divider'); if(divider) divider.hidden=false;
+      await client.auth.signOut();
+      setState('Password बदल गया। नए Password से Login करें।');
+      history.replaceState({},document.title,window.location.pathname);
+    }catch(err){out.textContent='Password नहीं बदला: '+(err?.message||String(err));}
+    finally{save.disabled=false;save.textContent='नया Password सुरक्षित करें';}
+  });
+  client.auth.onAuthStateChange((event,session)=>{
+    if(event==='PASSWORD_RECOVERY'){
+      showGate();
+      recoveryBox.hidden=false;
+      const lf=document.getElementById('loginForm'); if(lf) lf.hidden=true;
+      const reg=document.getElementById('employeeReg'); if(reg) reg.hidden=true;
+      const divider=document.querySelector('.auth-divider'); if(divider) divider.hidden=true;
+      setState('ईमेल सत्यापित हो गया। अब नया Password सेट करें।');
+    }else if(session){setTimeout(()=>verifySession(session),0);}
+    else if(event==='SIGNED_OUT'){showGate();}
+  });
 
   // Self-service password change for every authenticated staff member.
   let passwordPanel;
@@ -204,7 +246,6 @@
   async function rejectSignup(requestId){const {data:authData}=await client.auth.getUser();const {error}=await client.from('staff_signup_requests').update({status:'rejected',reviewed_by:authData.user.id,reviewed_at:new Date().toISOString()}).eq('id',requestId).eq('status','pending');if(error)setState('Reject नहीं हुआ: '+error.message,true);else await loadSignupRequests();}
   document.getElementById('refreshSignupRequests').addEventListener('click',loadSignupRequests);
 
-  client.auth.onAuthStateChange((_event,session)=>{ if(session) setTimeout(()=>verifySession(session),0); else showGate(); });
   client.auth.getSession().then(({data})=>verifySession(data.session));
   form.addEventListener('submit',async e=>{
     e.preventDefault(); btn.disabled=true; btn.textContent='लॉगिन हो रहा है…'; setState('आपकी जानकारी जाँची जा रही है।');
