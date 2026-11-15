@@ -35,7 +35,7 @@
   if(loginForm && loginSubmit) loginSubmit.insertAdjacentElement('afterend',forgotButton);
   forgotButton.addEventListener('click',async()=>{
     const email=document.getElementById('loginEmail').value.trim().toLowerCase();
-    if(!email){setState('पहले अपना Registered Email भरें, फिर Password भूल गए? दबाएँ।',true);document.getElementById('loginEmail').focus();return;}
+    if(!email || /^SRD[0-9]{4,}$/i.test(email)){setState('Password Reset के लिए अपना Registered Email भरें।',true);document.getElementById('loginEmail').focus();return;}
     // Validate the address before contacting Supabase to avoid malformed recovery requests.
     const emailPattern=/^[^\\s@]+@[^\\s@]+\\.[^\\s@]{2,}$/;
     if(!emailPattern.test(email)){setState('ईमेल पता सही फॉर्मेट में लिखें, जैसे name@example.com।',true);document.getElementById('loginEmail').focus();return;}
@@ -362,47 +362,8 @@
         await verifySession(data.session);
       }
     }catch(err){setState('Login नहीं हुआ: '+(err?.message||String(err)),true);}
-    finally{btn.disabled=false;btn.textContent='Password से Login करें';}
+    finally{btn.disabled=false;btn.textContent='Login करें';}
   });
 
-  const sendOtpButton=document.getElementById('sendPhoneOtp');
-  const otpPanel=document.getElementById('phoneOtpPanel');
-  const otpForm=document.getElementById('phoneOtpForm');
-  let pendingOtpPhone='';
-  function normalizeIndiaPhone(value){
-    const digits=value.replace(/\D/g,'');
-    if(digits.length===10)return '+91'+digits;
-    if(digits.length===12&&digits.startsWith('91'))return '+'+digits;
-    if(value.trim().startsWith('+')&&digits.length>=8&&digits.length<=15)return '+'+digits;
-    return '';
-  }
-  sendOtpButton?.addEventListener('click',async()=>{
-    const entered=document.getElementById('loginEmail').value.trim();
-    const phone=normalizeIndiaPhone(entered);
-    if(!phone){setState('Registered 10-digit Mobile Number या +CountryCode के साथ नंबर लिखें।',true);return;}
-    sendOtpButton.disabled=true;sendOtpButton.textContent='OTP भेजा जा रहा है…';
-    try{
-      const {error}=await client.auth.signInWithOtp({phone,options:{shouldCreateUser:false}});
-      if(error)throw error;
-      pendingOtpPhone=phone;otpPanel.hidden=false;
-      setState('Registered Mobile पर SMS OTP भेज दिया गया है। OTP किसी से साझा न करें।');
-      document.getElementById('phoneOtpCode').focus();
-    }catch(err){setState('SMS OTP नहीं भेजा गया: '+(err?.message||String(err))+' Supabase Auth में Phone Provider और SMS Provider चालू होना चाहिए।',true);}
-    finally{sendOtpButton.disabled=false;sendOtpButton.textContent='मोबाइल नंबर पर SMS OTP भेजें';}
-  });
-  otpForm?.addEventListener('submit',async e=>{
-    e.preventDefault();
-    const token=document.getElementById('phoneOtpCode').value.trim();
-    const verifyButton=document.getElementById('verifyPhoneOtp');
-    if(!pendingOtpPhone||!/^\d{6}$/.test(token)){setState('6 अंकों का OTP सही लिखें और पहले OTP भेजें।',true);return;}
-    verifyButton.disabled=true;verifyButton.textContent='Verify हो रहा है…';
-    try{
-      const {data,error}=await client.auth.verifyOtp({phone:pendingOtpPhone,token,type:'sms'});
-      if(error)throw error;
-      otpForm.reset();otpPanel.hidden=true;pendingOtpPhone='';
-      await verifySession(data.session);
-    }catch(err){setState('OTP Verify नहीं हुआ: '+(err?.message||String(err)),true);}
-    finally{verifyButton.disabled=false;verifyButton.textContent='OTP Verify करके Login करें';}
-  });
   signOut.addEventListener('click',async()=>{await client.auth.signOut();setState('आप Logout हो गए हैं।')});
 })();
