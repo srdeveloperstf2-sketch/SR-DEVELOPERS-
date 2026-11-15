@@ -346,17 +346,20 @@
     const identifier=document.getElementById('loginEmail').value.trim();
     const password=document.getElementById('loginPassword').value;
     try{
-      if(/^SRD[0-9]{4,}$/i.test(identifier)){
-        if(!password) throw new Error('Employee ID Login के लिए Password लिखें।');
-        const {data,error}=await client.functions.invoke('login-with-employee-code',{body:{employeeCode:identifier,password}});
-        if(error) throw new Error(error.message||'Employee ID Login सेवा उपलब्ध नहीं है।');
+      const isEmployeeCode=/^SRD[0-9]{4,}$/i.test(identifier);
+      const mobileDigits=identifier.replace(/\\D/g,'');
+      const isMobile=/^(?:\\+?91)?[6-9][0-9]{9}$/.test(identifier.replace(/[\\s-]/g,'')) || /^[6-9][0-9]{9}$/.test(mobileDigits);
+      if(isEmployeeCode||isMobile){
+        if(!password) throw new Error('6 अंकों का Password लिखें।');
+        const {data,error}=await client.functions.invoke('login-with-employee-code',{body:{identifier,password}});
+        if(error) throw new Error(error.message||'Employee ID / Mobile Login सेवा उपलब्ध नहीं है।');
         if(data?.error) throw new Error(data.error);
         if(!data?.access_token||!data?.refresh_token) throw new Error('Login Session प्राप्त नहीं हुआ।');
         const {data:sessionData,error:sessionError}=await client.auth.setSession({access_token:data.access_token,refresh_token:data.refresh_token});
         if(sessionError) throw sessionError;
         await verifySession(sessionData.session);
       }else{
-        if(!identifier||!password) throw new Error('Email और Password दोनों भरें।');
+        if(!identifier||!password) throw new Error('Registered Email और Password दोनों भरें।');
         const {data,error}=await client.auth.signInWithPassword({email:identifier,password});
         if(error) throw error;
         await verifySession(data.session);
