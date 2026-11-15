@@ -348,7 +348,8 @@
     try{
       const isEmployeeCode=/^SRD[0-9]{4,}$/i.test(identifier);
       const mobileDigits=identifier.replace(/\D/g,'');
-      const isMobile=/^(?:\\+?91)?[6-9][0-9]{9}$/.test(identifier.replace(/[\s-]/g,'')) || /^[6-9][0-9]{9}$/.test(mobileDigits);
+      const isMobile=(mobileDigits.length===10 && /^[6-9][0-9]{9}$/.test(mobileDigits)) ||
+        (mobileDigits.length===12 && /^91[6-9][0-9]{9}$/.test(mobileDigits));
       if(isEmployeeCode||isMobile){
         if(!password) throw new Error('6 अंकों का Password लिखें।');
         const {data,error}=await client.functions.invoke('login-with-employee-code',{body:{identifier,password}});
