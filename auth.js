@@ -23,11 +23,25 @@
   }
   const client=window.supabase.createClient(cfg.url,cfg.publishableKey);
   window.srSupabase=client;
+  let verificationInFlight=null;
   async function verifySession(session){
     if(!session){showGate();return}
+    if(verificationInFlight) return verificationInFlight;
+    verificationInFlight=(async()=>{
     const {data,error}=await client.from('profiles').select('full_name,role,is_active').eq('id',session.user.id).maybeSingle();
     if(error || !data || !data.is_active){await client.auth.signOut();showGate();setState('इस User की सक्रिय कर्मचारी Profile नहीं मिली। Admin से संपर्क करें।',true);return}
-    try { const sync=await window.srCloudInit(client,session.user,data); showApp(session.user,data); setState('Cloud sync जुड़ा है · '+sync.loaded+' रिकॉर्ड लोड · '+sync.uploaded+' अपलोड'); } catch(syncError) { showGate(); setState('Cloud Sync शुरू नहीं हुआ: '+syncError.message+' — Admin से संपर्क करें।',true); }
+    try {
+      if(typeof window.srCloudInit!=='function') throw new Error('Cloud sync module लोड नहीं हुआ। पेज refresh करें।');
+      const sync=await window.srCloudInit(client,session.user,data);
+      showApp(session.user,data);
+      setState('Cloud sync जुड़ा है · '+sync.loaded+' रिकॉर्ड लोड · '+sync.uploaded+' अपलोड');
+    } catch(syncError) {
+      showGate();
+      setState('Cloud Sync शुरू नहीं हुआ: '+(syncError?.message||String(syncError))+' — Admin से संपर्क करें।',true);
+    }
+    })();
+    try { return await verificationInFlight; }
+    finally { verificationInFlight=null; }
   }
 
   const signupForm=document.getElementById('signupForm');
