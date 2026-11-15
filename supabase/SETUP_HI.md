@@ -65,17 +65,17 @@ After updating `supabase/functions/create-staff-login/index.ts` in GitHub, redep
 - A Play Store / production-signed APK requires a private Android signing keystore and passwords owned by the company. Do not share those secrets in chat. The current GitHub workflow builds a debug APK only.
 
 
-## Employee Identity + Dual Login rollout (SRD sequence)
+## Employee Identity + Employee ID / Mobile Login rollout (SRD sequence)
 
 This is an additive upgrade. It does not delete existing profiles, Auth users, CRM records, attendance, leads, bookings, or payments. Existing trial profiles are deliberately left with a NULL employee_code so the first approved real employee starts at SRD0001.
 
 1. Take a Supabase database backup before the migration.
 2. Run `employee_identity_migration.sql` once in Supabase SQL Editor. It adds a unique, sequential employee_code such as SRD0001 to newly created profiles.
-3. Redeploy the updated `create-staff-login` Edge Function. It now requires a valid mobile number, stores it on the Auth user (unconfirmed until OTP), and returns the generated employeeCode.
-4. Deploy `login-with-employee-code`. The supplied `supabase/config.toml` sets `verify_jwt = false` for this public login endpoint; deploy using the Supabase CLI linked to this project so that setting is applied. The endpoint only looks up an active employee code and delegates password verification to Supabase Auth; it never returns the employee email.
-5. In Supabase Auth, enable Phone provider and configure an SMS provider before using Mobile + SMS OTP. Existing staff accounts created before this migration will need their Auth phone number added and verified by an Admin-approved process before phone OTP login works.
-6. Employee login UI supports Email + Password, SRD Employee ID + Password, and Registered Mobile + SMS OTP. The SMS OTP path depends on Supabase Auth Phone/SMS configuration.
-7. SMS + WhatsApp welcome notifications are not activated by this code-only change. Choose and configure an approved SMS and WhatsApp Business provider, sender identity, and (for WhatsApp business-initiated messages) approved template before enabling automated dual-channel delivery. Never send passwords or OTPs in group chats or store provider secrets in GitHub.
-8. Test with one newly created test employee first: verify SRD code assignment, password login, phone OTP delivery/verification, active-profile checks, and role-scoped access. Do not deactivate trial accounts until the backup and inventory are reviewed.
+3. Redeploy the updated `create-staff-login` Edge Function. It generates a six-digit numeric temporary password, stores the employee's registered mobile number, and returns the generated employeeCode.
+4. Deploy `login-with-employee-code`. The supplied `supabase/config.toml` sets `verify_jwt = false` for this public login endpoint; deploy using the Supabase CLI linked to this project so that setting is applied. The endpoint accepts either an active SRD employee code or the registered mobile number and delegates password verification to Supabase Auth.
+5. No SMS provider, OTP, or WhatsApp gateway is required for login. Admin can privately share the Employee ID and temporary six-digit password with the employee. Do not share credentials in group chats.
+6. Employee login UI supports SRD Employee ID + six-digit password, Registered Mobile Number + password, and the existing Email + Password option.
+7. Existing staff accounts with a mobile number saved in `profiles.phone` can use mobile login. Confirm the saved number is in the same Indian number format (+91 followed by 10 digits); duplicate phone numbers should be corrected before relying on mobile login.
+8. Test with one newly created test employee first: verify SRD code assignment, Employee ID login, mobile login, active-profile checks, and role-scoped access. Do not deactivate trial accounts until the backup and inventory are reviewed.
 
 Important: GitHub commits do not deploy Supabase Edge Functions or execute SQL migrations. Those deployment and dashboard steps must be completed separately.
