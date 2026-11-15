@@ -93,31 +93,30 @@ Deno.serve(async (req: Request) => {
     const token = authorization.match(/^Bearer\s+(.+)$/i)?.[1];
     if (!token) return json(req, { error: "Admin login required" }, 401);
 
-    // Verify the caller's own profile with their JWT (subject to the profiles RLS policy).
-    // This avoids querying profiles with a server key that may be configured as a newer sb_secret key.
+    // Verify the JWT first, then check the caller profile using the server-side client.
+    // This avoids legitimate Admin access being blocked by profiles table RLS.
     const caller = createClient(url, anon, {
-      global: { headers: { Authorization: `Bearer ${token}` } },
       auth: { autoRefreshToken: false, persistSession: false },
     });
     const { data: authData, error: authError } = await caller.auth.getUser(token);
     if (authError || !authData.user) return json(req, { error: "Valid login required" }, 401);
 
-    const { data: profile, error: profileLookupError } = await caller
+    const admin = createClient(url, serverSecret, {
+      auth: { autoRefreshToken: false, persistSession: false },
+    });
+    const { data: profile, error: profileLookupError } = await admin
       .from("profiles").select("role,is_active").eq("id", authData.user.id).maybeSingle();
 
     if (profileLookupError) {
-      console.error("Caller profile lookup failed", profileLookupError.code, profileLookupError.message);
+      console.error("Admin profile lookup failed", profileLookupError.code, profileLookupError.message);
       return json(req, {
-        error: "Admin profile check failed",
+        error: "Admin profile lookup failed",
         detail: profileLookupError.message,
         code: profileLookupError.code ?? null,
       }, 500);
     }
-    const admin = createClient(url, serverSecret, {
-      auth: { autoRefreshToken: false, persistSession: false },
-    });
     if (!profile || profile.role !== "admin" || profile.is_active !== true) {
-      return json(req, { error: "Only an active Admin can approve staff requests" }, 403);
+      return json(req, { error: "Logged-in account is not an active Admin profile" }, 403);
     }
 
     let body: unknown;
