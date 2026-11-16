@@ -38,11 +38,34 @@
       const leader=visible.find(x=>x.id===p.team_leader_id)?.full_name||'—';
       const isSelf=p.id===me.id;
       const adminControls=canAdmin()?'<div class="sc-row-actions"><label>Role<select data-field="role" data-id="'+p.id+'">'+['admin','manager','team_leader','sales_executive'].map(r=>'<option value="'+r+'" '+(p.role===r?'selected':'')+'>'+roleLabel(r)+'</option>').join('')+'</select></label><label>Manager<select data-field="manager_id" data-id="'+p.id+'"><option value="">None</option>'+profiles.filter(x=>x.is_active&&x.role==='manager'&&x.id!==p.id).map(x=>'<option value="'+x.id+'" '+(p.manager_id===x.id?'selected':'')+'>'+esc(x.full_name)+'</option>').join('')+'</select></label><label>Team Leader<select data-field="team_leader_id" data-id="'+p.id+'"><option value="">None</option>'+profiles.filter(x=>x.is_active&&x.role==='team_leader'&&x.id!==p.id).map(x=>'<option value="'+x.id+'" '+(p.team_leader_id===x.id?'selected':'')+'>'+esc(x.full_name)+'</option>').join('')+'</select></label><button class="tiny" data-save-profile="'+p.id+'">Save</button><button class="tiny '+(p.is_active?'danger':'secondary')+'" data-toggle-profile="'+p.id+'">'+(p.is_active?'Deactivate':'Activate')+'</button></div>':'';
-      const credentials=canAdmin()?'<div class="sc-credentials"><b>Login Details</b><small>Employee ID: <strong>'+esc(p.employee_code||'अभी जारी नहीं')+'</strong></small><small>Mobile / Login Number: <strong>'+esc(p.phone||'नंबर दर्ज नहीं')+'</strong></small><small>Password: <strong>सुरक्षा के कारण पुराना Password पढ़ा नहीं जा सकता</strong></small><small>नया Password देने के लिए Admin Login Management में Reset / नया Login जारी करें।</small></div>':'';
+      const credentials=canAdmin()?'<div class="sc-credentials"><b>Login Details</b><small>Employee ID: <strong>'+esc(p.employee_code||'अभी जारी नहीं')+'</strong></small><small>Mobile / Login Number: <strong>'+esc(p.phone||'नंबर दर्ज नहीं')+'</strong></small><small>Password: <strong>पुराना Password सुरक्षा के कारण नहीं दिखता</strong></small><div class="sc-row-actions"><button type="button" class="tiny secondary" data-reset-password="'+p.id+'">Reset Password</button></div><small id="sc-reset-result-'+p.id+'" aria-live="polite"></small></div>':'';
       return '<article class="sc-person"><div class="sc-avatar">'+esc((p.full_name||'S').trim().slice(0,1).toUpperCase())+'</div><div class="sc-person-main"><div class="sc-person-head"><b>'+esc(p.full_name)+'</b><span class="sc-chip '+(p.is_active?'good':'off')+'">'+(p.is_active?'Active':'Inactive')+'</span></div><small>'+esc(roleLabel(p.role))+' · '+esc(p.phone||'Contact not added')+'</small><small>Manager: '+esc(manager)+' · Team Leader: '+esc(leader)+'</small>'+credentials+adminControls+'</div></article>';
     }).join('')||'<p class="muted">इस Login के लिए कोई टीम रिकॉर्ड उपलब्ध नहीं है।</p>';
+    $('scTeamList').querySelectorAll('[data-reset-password]').forEach(btn=>btn.onclick=()=>resetStaffPassword(btn.dataset.resetPassword,btn));
     $('scTeamList').querySelectorAll('[data-save-profile]').forEach(btn=>btn.onclick=()=>saveProfile(btn.dataset.saveProfile,btn));
     $('scTeamList').querySelectorAll('[data-toggle-profile]').forEach(btn=>btn.onclick=()=>toggleProfile(btn.dataset.toggleProfile,btn));
+  }
+  async function resetStaffPassword(id,button){
+    const target=profiles.find(p=>p.id===id);if(!target||!canAdmin())return;
+    if(!confirm((target.full_name||'इस कर्मचारी')+' का Login Password बदलकर नया अस्थायी Password जारी करें? पुराना Password काम करना बंद कर देगा।'))return;
+    button.disabled=true;button.textContent='बदल रहा है…';
+    const out=$('sc-reset-result-'+id);if(out)out.textContent='सुरक्षित Reset किया जा रहा है…';
+    try{
+      const {data:sessionData,error:sessionError}=await client.auth.getSession();
+      const token=sessionData?.session?.access_token;
+      if(sessionError||!token)throw new Error('Admin Login session नहीं मिला। दोबारा Login करें।');
+      const {data,error}=await client.functions.invoke('admin-reset-staff-password',{body:{userId:id}});
+      if(error)throw error;
+      if(!data?.temporaryPassword)throw new Error(data?.error||'Server ने नया Password नहीं लौटाया।');
+      const result='नया अस्थायी Password: '+data.temporaryPassword+' · इसे अभी कॉपी करके कर्मचारी को निजी रूप से दें।';
+      if(out)out.textContent=result;
+      status('Password Reset हो गया। नया Password केवल अभी दिखाया गया है।');
+      if(navigator.clipboard?.writeText){try{await navigator.clipboard.writeText(data.temporaryPassword);if(out)out.textContent+=' (Password clipboard में कॉपी हो गया)';}catch{}}
+    }catch(err){
+      const message=err?.context?.error||err?.message||String(err);
+      if(out)out.textContent='Reset नहीं हुआ: '+message;
+      status('Password Reset नहीं हुआ: '+message,true);
+    }finally{button.disabled=false;button.textContent='Reset Password';}
   }
   async function saveProfile(id,button){
     const fields=[...$('scTeamList').querySelectorAll('[data-id="'+id+'"]')];
