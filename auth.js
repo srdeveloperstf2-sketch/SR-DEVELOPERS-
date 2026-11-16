@@ -199,16 +199,15 @@
     }
   });
   async function loadVisibleTeamProfiles(){
-    const {data,error}=await client.from('profiles').select('id,employee_code,full_name,role,phone,manager_id,is_active').eq('is_active',true).order('full_name');
-    if(error){console.warn('Team directory profile load:',error.message);return;}
-    window.srVisibleProfiles=data||[];
+    // cloud-sync.js already fetched the active directory; reuse it instead of making
+    // a second identical network request during every login.
+    window.srVisibleProfiles=window.srEmployeeDirectory||[];
     window.srSetProfiles?.(window.srVisibleProfiles);
   }
   async function initStaffAdmin(){
-    const {data,error}=await client.from('profiles').select('id,employee_code,full_name,role,phone,manager_id,is_active').eq('is_active',true).order('full_name');
-    if(error) console.warn('Could not load staff profiles:',error.message);
-    window.srVisibleProfiles=data||[];
-    window.srActiveManagers=(data||[]).filter(p=>['manager','team_leader'].includes(p.role));
+    const data=window.srEmployeeDirectory||[];
+    window.srVisibleProfiles=data;
+    window.srActiveManagers=data.filter(p=>['manager','team_leader'].includes(p.role));
     window.srSetProfiles?.(window.srVisibleProfiles);
     refreshDirectStaffManagers();
     await loadSignupRequests();
