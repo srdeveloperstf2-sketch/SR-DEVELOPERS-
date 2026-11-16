@@ -60,7 +60,7 @@ Deno.serve(async (req: Request) => {
       prepared.push({ ...person, password: makePassword() });
     }
 
-    const changed = [];
+    const changed: Array<{ fullName: string; role: string; phone: string | null; temporaryPassword: string; employeeCode?: string }> = [];
     for (const person of prepared) {
       const { error } = await admin.auth.admin.updateUserById(person.id, { password: person.password });
       if (error) {
