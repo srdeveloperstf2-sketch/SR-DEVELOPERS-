@@ -68,6 +68,7 @@ Deno.serve(async (req: Request) => {
 
   let createdUserId: string | null = null;
   let profileCreated = false;
+  let createdAuthUser = false;
 
   try {
     const url = Deno.env.get("SUPABASE_URL");
@@ -192,25 +193,53 @@ Deno.serve(async (req: Request) => {
       }
     }
 
-    // Mobile is stored in profiles only; login uses the verified email/password backend.
-    // This avoids enabling Supabase Phone/SMS OTP provider.
-    const { data: created, error: createError } = await admin.auth.admin.createUser({
-      email,
-      password,
-      email_confirm: true,
-      user_metadata: { full_name: fullName, account_type: "staff" },
-    });
-    if (createError || !created.user) {
-      console.error("Auth user creation failed", createError?.message ?? "No user returned");
-      return json(req, { error: "Could not create login. Check whether this email already has an account." }, 400);
+    // Reuse an existing Auth identity only when it has no CRM profile.
+    // Never overwrite or convert an existing Admin/staff profile.
+    const { data: authUsers, error: listUsersError } = await admin.auth.admin.listUsers({ page: 1, perPage: 1000 });
+    if (listUsersError) {
+      console.error("Auth email lookup failed", listUsersError.message);
+      return json(req, { error: "Could not check existing Login account" }, 500);
     }
-    createdUserId = created.user.id;
+    const existingAuthUser = authUsers.users.find((u) => (u.email ?? "").toLowerCase() === email);
+    let accountId: string;
+    if (existingAuthUser) {
+      const { data: existingProfile, error: existingProfileError } = await admin
+        .from("profiles").select("id,role").eq("id", existingAuthUser.id).maybeSingle();
+      if (existingProfileError) {
+        console.error("Existing profile lookup failed", existingProfileError.message);
+        return json(req, { error: "Could not check existing CRM profile" }, 500);
+      }
+      if (existingProfile) {
+        return json(req, {
+          error: "इस Email का Login और CRM Profile पहले से मौजूद है। उसी कर्मचारी की मौजूदा ID जाँचें; नया Account नहीं बनाया गया।",
+          code: "PROFILE_ALREADY_EXISTS",
+        }, 409);
+      }
+      accountId = existingAuthUser.id;
+      createdUserId = accountId;
+      // Existing Auth account is an orphan without a CRM profile. It will be
+      // linked to this approved staff request and receive a new temporary password.
+    } else {
+      const { data: created, error: createError } = await admin.auth.admin.createUser({
+        email,
+        password,
+        email_confirm: true,
+        user_metadata: { full_name: fullName, account_type: "staff" },
+      });
+      if (createError || !created.user) {
+        console.error("Auth user creation failed", createError?.message ?? "No user returned");
+        return json(req, { error: "Could not create login. Check whether this email already has an account." }, 400);
+      }
+      accountId = created.user.id;
+      createdUserId = accountId;
+      createdAuthUser = true;
+    }
 
     const { data: supervisor } = managerId
       ? await admin.from("profiles").select("id,role,manager_id").eq("id", managerId).maybeSingle()
       : { data: null };
     const { error: insertProfileError } = await admin.from("profiles").insert({
-      id: created.user.id,
+      id: accountId,
       full_name: fullName,
       role,
       phone: phone || null,
@@ -226,12 +255,22 @@ Deno.serve(async (req: Request) => {
     }
     profileCreated = true;
 
+    const { error: passwordUpdateError } = await admin.auth.admin.updateUserById(accountId, { password });
+    if (passwordUpdateError) {
+      console.error("Temporary password assignment failed", passwordUpdateError.message);
+      await admin.from("profiles").delete().eq("id", accountId);
+      if (createdAuthUser) await admin.auth.admin.deleteUser(accountId);
+      createdUserId = null;
+      profileCreated = false;
+      return json(req, { error: "Temporary password could not be assigned to this Login account" }, 500);
+    }
+
     const { data: identityProfile, error: identityError } = await admin
-      .from("profiles").select("employee_code").eq("id", created.user.id).single();
+      .from("profiles").select("employee_code").eq("id", accountId).single();
     if (identityError || !identityProfile?.employee_code) {
       console.error("Employee code assignment failed", identityError?.message ?? "No employee code returned");
-      await admin.from("profiles").delete().eq("id", created.user.id);
-      await admin.auth.admin.deleteUser(created.user.id);
+      await admin.from("profiles").delete().eq("id", accountId);
+      if (createdAuthUser) await admin.auth.admin.deleteUser(accountId);
       createdUserId = null;
       profileCreated = false;
       return json(req, { error: "Employee ID could not be assigned. Run employee_identity_migration.sql and retry." }, 500);
@@ -248,8 +287,8 @@ Deno.serve(async (req: Request) => {
 
     if (approvalError || !approved) {
       console.error("Approval update failed", approvalError?.message ?? "Request already handled");
-      await admin.from("profiles").delete().eq("id", created.user.id);
-      await admin.auth.admin.deleteUser(created.user.id);
+      await admin.from("profiles").delete().eq("id", accountId);
+      if (createdAuthUser) await admin.auth.admin.deleteUser(accountId);
       createdUserId = null;
       profileCreated = false;
       return json(req, { error: "Request was already handled or approval failed; new account rolled back" }, 409);
@@ -258,7 +297,7 @@ Deno.serve(async (req: Request) => {
     createdUserId = null;
     profileCreated = false;
     return json(req, {
-      userId: created.user.id,
+      userId: accountId,
       fullName,
       email,
       role,
@@ -279,7 +318,7 @@ Deno.serve(async (req: Request) => {
           auth: { autoRefreshToken: false, persistSession: false },
         });
         if (profileCreated) await admin.from("profiles").delete().eq("id", createdUserId);
-        await admin.auth.admin.deleteUser(createdUserId);
+        if (createdAuthUser) await admin.auth.admin.deleteUser(createdUserId);
       }
     }
     return json(req, { error: "Unexpected server error" }, 500);
