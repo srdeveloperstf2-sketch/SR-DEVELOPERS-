@@ -45,7 +45,7 @@ Deno.serve(async (req: Request) => {
     if (!url || !anon || !secret) return reply(req, { error: "Password reset service is not configured" }, 503);
 
     const authorization = req.headers.get("Authorization") ?? "";
-    const token = authorization.match(/^Bearer\\s+(.+)$/i)?.[1];
+    const token = authorization.match(/^Bearer\s+(.+)$/i)?.[1];
     if (!token) return reply(req, { error: "Admin login required" }, 401);
 
     const caller = createClient(url, anon, { auth: { autoRefreshToken: false, persistSession: false } });
