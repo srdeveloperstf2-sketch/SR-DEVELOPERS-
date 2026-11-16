@@ -9,10 +9,14 @@
   const btn = document.getElementById('loginButton');
   const signOut = document.getElementById('signOut');
   const setState = (message, error=false) => { status.textContent=message; status.classList.toggle('error',error); };
+  const isAdminProfile = profile => String(profile?.role||'').trim().toLowerCase()==='admin';
   const showApp = (user, profile) => {
     login.hidden=true; appHeader.hidden=false; appMain.hidden=false; if(footer)footer.hidden=false;
+    const adminMode=isAdminProfile(profile);
     document.getElementById('sessionUser').textContent=(profile.full_name||user.email)+' · '+profile.role;
-    document.querySelectorAll('.admin-only').forEach(el=>el.hidden=profile.role!=='admin');
+    document.querySelectorAll('.admin-only').forEach(el=>el.hidden=!adminMode);
+    const staffAccountsPanel=document.getElementById('staffAccountsPanel');
+    if(staffAccountsPanel) staffAccountsPanel.hidden=!adminMode;
     signOut.hidden=false;
     ensurePasswordPanel();
     // Team profiles are loaded after cloud sync in verifySession.
@@ -159,7 +163,7 @@
       window.srCurrentProfile={id:session.user.id,email:session.user.email,...data};
       showApp(session.user,data);
       await loadVisibleTeamProfiles();
-      if(data.role==='admin') await initStaffAdmin();
+      if(isAdminProfile(data)) await initStaffAdmin();
       setState('Cloud sync जुड़ा है · '+sync.loaded+' रिकॉर्ड लोड · '+sync.uploaded+' अपलोड');
       window.dispatchEvent(new CustomEvent('sr-auth-ready',{detail:window.srCurrentProfile}));
     } catch(syncError) {
