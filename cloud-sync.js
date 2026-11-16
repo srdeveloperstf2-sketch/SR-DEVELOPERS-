@@ -55,8 +55,28 @@
     profileByName=new Map((profiles||[]).map(p=>[String(p.full_name||'').trim().toLowerCase(),p.id]));
     accessibleOwnerIds=new Set([user.id,...(profiles||[]).map(p=>p.id)]);
     window.srEmployeeDirectory=profiles||[];
-    const {data,error}=await client.from('crm_records').select('id,record_type,payload,owner_id,created_by,updated_at');
-    if(error){console.error(error);throw new Error('Cloud data load failed: '+error.message)}
+    // Load the first page immediately; fetch additional pages only when needed.
+    // This avoids a slow unbounded response while preserving every visible CRM record.
+    const pageSize=1000;
+    const first=await client.from('crm_records').select('id,record_type,payload,owner_id,created_by,updated_at').range(0,pageSize-1);
+    if(first.error){console.error(first.error);throw new Error('Cloud data load failed: '+first.error.message)}
+    const data=[...(first.data||[])];
+    if(data.length===pageSize){
+      let from=pageSize;
+      while(true){
+        const batch=await Promise.all([0,1,2,3].map(offset=>
+          client.from('crm_records').select('id,record_type,payload,owner_id,created_by,updated_at').range(from+offset*pageSize,from+(offset+1)*pageSize-1)
+        ));
+        let reachedEnd=false;
+        for(const result of batch){
+          if(result.error) throw new Error('Cloud data load failed: '+result.error.message);
+          data.push(...(result.data||[]));
+          if((result.data||[]).length<pageSize){reachedEnd=true;break;}
+        }
+        if(reachedEnd) break;
+        from+=4*pageSize;
+      }
+    }
     // Recover safely if the app database was not attached to window before login.
     let db=window.srDb;
     if(!db || typeof db!=='object'){
@@ -77,16 +97,30 @@
     for(const key of Object.keys(types))if(!Array.isArray(db[key]))db[key]=[];
     localStorage.setItem('srcrm_v11',JSON.stringify(db));
     window.srCloudPersist=persist;ready=true;window.srCloudReady=true;
-    const missing=[];let skippedLocal=0;
-    for(const [key,type] of Object.entries(types))for(const item of db[key])if(!seen.has(item.id)){
-      const ownerId=ownerFor(key,item,db);
-      if(!canWriteOwner(ownerId)||(item.created_by&&item.created_by!==user.id&&!isAdmin())){skippedLocal++;continue;}
-      missing.push({id:item.id,record_type:type,payload:item,owner_id:ownerId,created_by:user.id,updated_at:new Date().toISOString()});
-    }
-    if(missing.length){const {error:upErr}=await client.from('crm_records').upsert(missing,{onConflict:'id'});if(upErr)throw new Error('आपके अधिकार वाले Local records upload नहीं हुए: '+upErr.message)}
+    const loadedCount=data.length;
+    // Do not hold the login screen open while uploading old local records.
+    // Background migration is safe: only records owned by this user/Admin are queued.
+    const backgroundUpload=async()=>{
+      const missing=[];let skippedLocal=0;
+      for(const [key,type] of Object.entries(types))for(const item of db[key]){
+        if(seen.has(item.id))continue;
+        const ownerId=ownerFor(key,item,db);
+        if(!canWriteOwner(ownerId)||(item.created_by&&item.created_by!==user.id&&!isAdmin())){skippedLocal++;continue;}
+        missing.push({id:item.id,record_type:type,payload:item,owner_id:ownerId,created_by:user.id,updated_at:new Date().toISOString()});
+      }
+      if(missing.length){
+        const {error:upErr}=await client.from('crm_records').upsert(missing,{onConflict:'id'});
+        if(upErr) throw new Error('Local records background upload failed: '+upErr.message);
+      }
+      window.dispatchEvent(new CustomEvent('sr-cloud-background-sync',{detail:{uploaded:missing.length,skippedLocal}}));
+    };
+    setTimeout(()=>backgroundUpload().catch(err=>{
+      console.error('CRM background sync:',err);
+      window.dispatchEvent(new CustomEvent('sr-cloud-error',{detail:err?.message||String(err)}));
+    }),0);
     window.srRender?.();
-    window.dispatchEvent(new CustomEvent('sr-cloud-ready',{detail:{count:(data||[]).length,uploaded:missing.length,skippedLocal,role:profile.role}}));
-    return {loaded:(data||[]).length,uploaded:missing.length,skippedLocal};
+    window.dispatchEvent(new CustomEvent('sr-cloud-ready',{detail:{count:loadedCount,uploaded:0,skippedLocal:0,role:profile.role}}));
+    return {loaded:loadedCount,uploaded:0,skippedLocal:0};
   }
   window.srCloudInit=init;
   window.addEventListener('online',()=>{if(ready&&window.srDb)persist(window.srDb)});
