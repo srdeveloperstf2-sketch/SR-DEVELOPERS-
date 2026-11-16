@@ -249,21 +249,11 @@ Deno.serve(async (req: Request) => {
     });
     if (insertProfileError) {
       console.error("Profile creation failed", insertProfileError.message);
-      await admin.auth.admin.deleteUser(created.user.id);
+      if (createdAuthUser) await admin.auth.admin.deleteUser(accountId);
       createdUserId = null;
       return json(req, { error: "Staff profile could not be created; Auth account was rolled back" }, 500);
     }
     profileCreated = true;
-
-    const { error: passwordUpdateError } = await admin.auth.admin.updateUserById(accountId, { password });
-    if (passwordUpdateError) {
-      console.error("Temporary password assignment failed", passwordUpdateError.message);
-      await admin.from("profiles").delete().eq("id", accountId);
-      if (createdAuthUser) await admin.auth.admin.deleteUser(accountId);
-      createdUserId = null;
-      profileCreated = false;
-      return json(req, { error: "Temporary password could not be assigned to this Login account" }, 500);
-    }
 
     const { data: identityProfile, error: identityError } = await admin
       .from("profiles").select("employee_code").eq("id", accountId).single();
@@ -292,6 +282,17 @@ Deno.serve(async (req: Request) => {
       createdUserId = null;
       profileCreated = false;
       return json(req, { error: "Request was already handled or approval failed; new account rolled back" }, 409);
+    }
+
+    const { error: passwordUpdateError } = await admin.auth.admin.updateUserById(accountId, { password });
+    if (passwordUpdateError) {
+      console.error("Temporary password assignment failed", passwordUpdateError.message);
+      await admin.from("staff_signup_requests").update({ status: "pending", reviewed_by: null, reviewed_at: null }).eq("id", requestId);
+      await admin.from("profiles").delete().eq("id", accountId);
+      if (createdAuthUser) await admin.auth.admin.deleteUser(accountId);
+      createdUserId = null;
+      profileCreated = false;
+      return json(req, { error: "Temporary password could not be assigned to this Login account" }, 500);
     }
 
     createdUserId = null;
