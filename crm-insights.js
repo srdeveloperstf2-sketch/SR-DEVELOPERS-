@@ -6,18 +6,32 @@
   const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const db = () => window.srDb || {};
   const profile = () => window.srCurrentProfile || {};
-  const today = () => new Date().toISOString().slice(0,10);
+  const today = () => { const d=new Date(); return [d.getFullYear(),String(d.getMonth()+1).padStart(2,'0'),String(d.getDate()).padStart(2,'0')].join('-'); };
   const dateOf = v => String(v || '').slice(0,10);
   const money = v => '₹' + Number(v || 0).toLocaleString('en-IN');
   const stamp = () => new Date().toISOString();
   const who = () => profile().full_name || profile().email || 'CRM User';
-  const role = () => String(profile().role || '').toLowerCase();
+  const role = () => String(profile().role || '').trim().toLowerCase();
   const isAdmin = () => role() === 'admin';
   const isManager = () => ['manager','team_leader','team leader'].includes(role()) || isAdmin();
   const leadById = id => (db().leads || []).find(x => x.id === id);
   const leadOwner = l => l?.owner_id || l?.ownerId || '';
-  const assignedToMe = l => leadOwner(l) === profile().id || String(l?.assigned || '').trim().toLowerCase() === who().trim().toLowerCase() || (l?.created_by && l.created_by === profile().id);
-  const canSeeLead = l => isManager() || assignedToMe(l);
+  // The directory is already constrained by Supabase profile RLS.
+  const visibleStaff = () => {
+    const me=profile(), all=[...(window.srEmployeeDirectory||[]).filter(p=>p.id!==me.id),me], ids=new Set([me.id]);
+    if(isAdmin()) return all;
+    if(role()==='manager'){
+      let changed=true;
+      while(changed){changed=false;for(const p of all){if(ids.has(p.id))continue;if(ids.has(p.manager_id)||ids.has(p.team_leader_id)){ids.add(p.id);changed=true;}}}
+    } else if(['team_leader','team leader'].includes(role())) {
+      all.forEach(p=>{if(p.team_leader_id===me.id)ids.add(p.id);});
+    }
+    return all.filter(p=>ids.has(p.id));
+  };
+  const visibleOwnerIds = () => new Set(visibleStaff().map(p=>p.id));
+  const nameToId = name => visibleStaff().find(p=>String(p.full_name||'').trim().toLowerCase()===String(name||'').trim().toLowerCase())?.id||'';
+  const assignedToMe = l => leadOwner(l)===profile().id || nameToId(l?.assigned)===profile().id || (l?.created_by&&l.created_by===profile().id);
+  const canSeeLead = l => !!l && (isAdmin() || visibleOwnerIds().has(leadOwner(l)||nameToId(l?.assigned)) || l.created_by===profile().id);
   const visibleLeads = () => (db().leads || []).filter(canSeeLead);
   const root = document.createElement('section');
   root.id = 'srInsights';
@@ -100,10 +114,10 @@
   }
   function renderTeam() {
     if(!isManager()){$('insTeamTable').innerHTML='<p class="ins-muted">Manager Monitoring केवल Admin, Manager और Team Leader के लिए उपलब्ध है।</p>';return;}
-    const d=db(), day=$('insReportDate')?.value || today(), staff=(window.srEmployeeDirectory||[]).map(p=>({id:p.id,name:p.full_name,role:p.role})).filter(p=>p.id);
+    const d=db(), day=$('insReportDate')?.value || today(), staff=visibleStaff().map(p=>({id:p.id,name:p.full_name,role:p.role})).filter(p=>p.id);
     if(!staff.length) (d.staff||[]).forEach(s=>staff.push({id:s.id,name:s.name,role:s.role}));
     const rows=staff.map(s=>{
-      const mine=(d.leads||[]).filter(l=>leadOwner(l)===s.id||String(l.assigned||'').toLowerCase()===String(s.name||'').toLowerCase());
+      const mine=(d.leads||[]).filter(l=>canSeeLead(l)&&(leadOwner(l)===s.id||nameToId(l.assigned)===s.id));
       const ids=new Set(mine.map(l=>l.id));
       const interactions=(d.callLogs||[]).filter(x=>ids.has(x.lead)&&dateOf(x.at)===day);
       const follow=(d.followups||[]).filter(x=>ids.has(x.lead)&&dateOf(x.when)===day);
