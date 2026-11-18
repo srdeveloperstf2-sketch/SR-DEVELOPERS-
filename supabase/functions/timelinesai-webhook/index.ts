@@ -7,16 +7,18 @@ const corsHeaders = {
   "Cache-Control": "no-store",
 };
 
-type IncomingEvent = {
-  event_type?: string;
-  data?: Record<string, unknown>;
-};
-
+type Obj = Record<string, unknown>;
+const obj = (v: unknown): Obj => v && typeof v === "object" && !Array.isArray(v) ? v as Obj : {};
+const first = (...values: unknown[]) => values.find(v => v !== undefined && v !== null && String(v).trim() !== "");
 const digits = (value: unknown) => String(value || "").replace(/\D/g, "");
 const normalizePhone = (value: unknown) => {
-  const raw = String(value || "").trim();
-  const d = digits(raw);
-  return d ? (raw.startsWith("+") ? "+" : "+") + d : "";
+  const d = digits(value);
+  return d ? "+" + d : "";
+};
+const phoneCandidates = (phone: string) => {
+  const d = digits(phone);
+  const last10 = d.slice(-10);
+  return [...new Set([phone, d, "+" + d, last10, "91" + last10, "+91" + last10].filter(Boolean))];
 };
 const uuidFrom = async (value: string) => {
   const bytes = new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(value)));
@@ -33,26 +35,44 @@ Deno.serve(async (req: Request) => {
   const expected = Deno.env.get("WHATSAPP_WEBHOOK_SECRET");
   const supplied = new URL(req.url).searchParams.get("secret");
   if (!expected || !supplied || supplied !== expected) {
+    console.warn("timelinesai-webhook: rejected request (secret mismatch)");
     return new Response("Not found", { status: 404, headers: corsHeaders });
   }
 
-  let event: IncomingEvent;
-  try { event = await req.json(); }
+  let event: Obj;
+  try { event = obj(await req.json()); }
   catch { return Response.json({ error: "Invalid JSON" }, { status: 400, headers: corsHeaders }); }
 
-  const eventType = String(event.event_type || "");
+  const rootData = obj(first(event.data, event.message, event.payload, event));
+  const nestedMessage = obj(rootData.message);
+  const nestedChat = obj(first(rootData.chat, nestedMessage.chat, event.chat));
+  const data: Obj = { ...rootData, ...nestedMessage };
+  const eventType = String(first(event.event_type, event.type, rootData.event_type, rootData.type) || "");
   if (!["message:received:new", "message:sent:new"].includes(eventType)) {
-    return Response.json({ ok: true, ignored: eventType }, { headers: corsHeaders });
+    console.log("timelinesai-webhook: ignored event", JSON.stringify({ eventType, rootKeys: Object.keys(event), dataKeys: Object.keys(rootData) }));
+    return Response.json({ ok: true, ignored: "unsupported event", event_type: eventType }, { headers: corsHeaders });
   }
 
-  const data = (event.data || {}) as Record<string, unknown>;
-  const nestedChat = (data.chat || {}) as Record<string, unknown>;
-  const messageUid = String(data.message_uid || data.uid || "");
-  const phone = normalizePhone(data.sender_phone || data.phone || data.contact_phone || nestedChat.phone);
-  const text = String(data.text || data.message || data.body || "");
-  const chatId = String(data.chat_id || nestedChat.id || "");
-  if (!messageUid || !phone) {
-    return Response.json({ ok: true, ignored: "missing message_uid or sender phone" }, { headers: corsHeaders });
+  const senderPhone = first(data.sender_phone, data.phone, data.contact_phone, data.whatsapp_phone, obj(data.contact).phone, nestedChat.phone);
+  const recipientPhone = first(data.recipient_phone, data.to, obj(data.recipient).phone);
+  const fromMe = data.from_me === true || data.whatsapp_from_me === true || obj(data.data).whatsapp_from_me === true;
+  const phone = normalizePhone(eventType === "message:received:new" ? senderPhone : (senderPhone || recipientPhone));
+  const messageUid = String(first(data.message_uid, data.uid, data.id, obj(data.message).uid) || await uuidFrom(JSON.stringify({
+    eventType, chat: first(data.chat_id, nestedChat.id), phone,
+    timestamp: first(data.timestamp, data.created_at), text: first(data.text, data.body)
+  })));
+  const text = String(first(data.text, data.body, data.message_text, data.content, data.transcript) || "");
+  const chatId = String(first(data.chat_id, nestedChat.id, data.chatId) || "");
+  const senderName = String(first(data.sender_name, data.chat_name, data.contact_name, nestedChat.name, obj(data.contact).name) || phone);
+
+  console.log("timelinesai-webhook: received", JSON.stringify({
+    eventType, hasPhone: !!phone, hasMessageUid: !!messageUid, hasText: !!text,
+    hasChatId: !!chatId, fromMe, keys: Object.keys(data)
+  }));
+
+  if (!phone) {
+    console.warn("timelinesai-webhook: ignored because contact phone is missing", JSON.stringify({ eventType, chatId, keys: Object.keys(data) }));
+    return Response.json({ ok: true, ignored: "missing contact phone", event_type: eventType, chat_id: chatId }, { headers: corsHeaders });
   }
 
   try {
@@ -62,86 +82,71 @@ Deno.serve(async (req: Request) => {
     const supabase = createClient(url, key, { auth: { autoRefreshToken: false, persistSession: false } });
 
     const { data: admins, error: adminError } = await supabase
-      .from("profiles").select("id,full_name").eq("role", "admin").eq("is_active", true).limit(1);
+      .from("profiles").select("id,full_name").ilike("role", "admin").eq("is_active", true).limit(1);
     if (adminError) throw adminError;
     const admin = admins?.[0];
     if (!admin?.id) throw new Error("No active Admin profile found; cannot safely assign inbound WhatsApp lead");
 
+    const candidates = phoneCandidates(phone);
     const { data: leadRows, error: findError } = await supabase
       .from("crm_records").select("id,payload,owner_id,created_by")
       .eq("record_type", "lead")
-      .order("updated_at", { ascending: false })
-      .limit(5000);
+      .in("payload->>phone", candidates)
+      .limit(20);
     if (findError) throw findError;
-    const existing = (leadRows || []).find((row) =>
-      digits((row.payload as Record<string, unknown>)?.phone).slice(-10) === digits(phone).slice(-10)
-    );
+    const last10 = digits(phone).slice(-10);
+    const existing = (leadRows || []).find(row => digits(obj(row.payload).phone).slice(-10) === last10);
 
     const now = new Date().toISOString();
     const message = {
       uid: messageUid,
       direction: eventType === "message:received:new" ? "incoming" : "outgoing",
-      text,
-      phone,
-      chat_id: chatId,
-      timestamp: String(data.timestamp || now),
-      sender_name: String(data.sender_name || ""),
+      text, phone, chat_id: chatId,
+      timestamp: String(first(data.timestamp, data.created_at, now)),
+      sender_name: senderName,
       event_type: eventType,
     };
 
     if (existing) {
-      const payload = { ...(existing.payload || {}) } as Record<string, unknown>;
-      const history = Array.isArray(payload.whatsappMessages) ? payload.whatsappMessages as Array<Record<string, unknown>> : [];
+      const payload = { ...obj(existing.payload) };
+      const history = Array.isArray(payload.whatsappMessages) ? payload.whatsappMessages as Array<Obj> : [];
       if (history.some(item => String(item.uid || "") === messageUid)) {
+        console.log("timelinesai-webhook: duplicate message", JSON.stringify({ leadId: existing.id }));
         return Response.json({ ok: true, duplicate: true, lead_id: existing.id }, { headers: corsHeaders });
       }
       payload.whatsappMessages = [...history, message].slice(-500);
       payload.lastWhatsAppMessage = text;
       payload.lastWhatsAppAt = message.timestamp;
       payload.whatsappChatId = chatId;
-      const { error } = await supabase.from("crm_records").update({ payload, updated_at: now }).eq("id", existing.id);
+      const { error } = await supabase.from("crm_records").update({ payload, updated_at: now }).eq("id", existing.id).eq("record_type", "lead");
       if (error) throw error;
+      console.log("timelinesai-webhook: updated existing lead", JSON.stringify({ leadId: existing.id }));
       return Response.json({ ok: true, updated: true, lead_id: existing.id }, { headers: corsHeaders });
     }
 
-    // Do not create a new lead from messages sent by the company itself.
-    if (eventType === "message:sent:new" || data.from_me === true) {
+    if (eventType === "message:sent:new" || fromMe) {
       return Response.json({ ok: true, ignored: "outgoing message without an existing CRM lead" }, { headers: corsHeaders });
     }
 
-    const leadId = await uuidFrom("timelinesai-lead:" + phone);
+    const leadId = await uuidFrom("timelinesai-lead:" + last10);
     const payload = {
-      id: leadId,
-      name: String(data.sender_name || phone),
-      phone,
-      whatsapp: phone,
-      project: "Not Selected",
-      source: "WhatsApp",
-      status: "New",
-      assigned: admin.full_name,
-      owner_id: admin.id,
-      created_by: admin.id,
-      created_by_name: admin.full_name,
-      created_by_role: "admin",
+      id: leadId, name: senderName || phone, phone, whatsapp: phone,
+      project: "Not Selected", source: "WhatsApp", status: "New",
+      assigned: admin.full_name, owner_id: admin.id, created_by: admin.id,
+      created_by_name: admin.full_name, created_by_role: "admin",
       notes: "WhatsApp se prapt inquiry. CRM mein automatic create hui.",
-      created: now.slice(0, 10),
-      whatsappChatId: chatId,
-      whatsappMessages: [message],
-      lastWhatsAppMessage: text,
-      lastWhatsAppAt: message.timestamp,
+      created: now.slice(0, 10), whatsappChatId: chatId,
+      whatsappMessages: [message], lastWhatsAppMessage: text, lastWhatsAppAt: message.timestamp,
     };
-    const { error: insertError } = await supabase.from("crm_records").insert({
-      id: leadId,
-      record_type: "lead",
-      payload,
-      owner_id: admin.id,
-      created_by: admin.id,
-      updated_at: now,
-    });
+    const { error: insertError } = await supabase.from("crm_records").upsert({
+      id: leadId, record_type: "lead", payload,
+      owner_id: admin.id, created_by: admin.id, updated_at: now,
+    }, { onConflict: "id" });
     if (insertError) throw insertError;
+    console.log("timelinesai-webhook: created lead", JSON.stringify({ leadId, phoneLast4: last10.slice(-4) }));
     return Response.json({ ok: true, created: true, lead_id: leadId }, { headers: corsHeaders });
   } catch (error) {
-    console.error("timelinesai-webhook:", error instanceof Error ? error.message : "unknown error");
+    console.error("timelinesai-webhook: processing failed", error instanceof Error ? error.message : "unknown error");
     return Response.json({ error: "Webhook processing failed" }, { status: 500, headers: corsHeaders });
   }
 });
