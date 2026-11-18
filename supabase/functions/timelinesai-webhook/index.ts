@@ -67,12 +67,15 @@ Deno.serve(async (req: Request) => {
     const admin = admins?.[0];
     if (!admin?.id) throw new Error("No active Admin profile found; cannot safely assign inbound WhatsApp lead");
 
-    const { data: matches, error: findError } = await supabase
+    const { data: leadRows, error: findError } = await supabase
       .from("crm_records").select("id,payload,owner_id,created_by")
       .eq("record_type", "lead")
-      .filter("payload->>phone", "eq", phone)
-      .limit(1);
+      .order("updated_at", { ascending: false })
+      .limit(5000);
     if (findError) throw findError;
+    const existing = (leadRows || []).find((row) =>
+      digits((row.payload as Record<string, unknown>)?.phone).slice(-10) === digits(phone).slice(-10)
+    );
 
     const now = new Date().toISOString();
     const message = {
@@ -86,7 +89,6 @@ Deno.serve(async (req: Request) => {
       event_type: eventType,
     };
 
-    const existing = matches?.[0];
     if (existing) {
       const payload = { ...(existing.payload || {}) } as Record<string, unknown>;
       const history = Array.isArray(payload.whatsappMessages) ? payload.whatsappMessages as Array<Record<string, unknown>> : [];
