@@ -34,6 +34,15 @@
   }
 
   function describe(n){
+    if(n.event_type==='attendance_checkin'||n.event_type==='attendance_checkout'){
+      return '<b>'+esc(n.title)+'</b><small>कर्मचारी: '+esc(n.employee_name||n.actor_name||'—')+' · मोबाइल: '+esc(n.employee_phone||'—')+'<br>पद: '+esc(n.employee_role||n.actor_role||'—')+'<br>समय: '+esc(new Date(n.created_at).toLocaleString('en-IN'))+'</small>';
+    }
+    if(n.event_type==='leave_requested'||n.event_type==='leave_approved'||n.event_type==='leave_rejected'){
+      return '<b>'+esc(n.title)+'</b><small>कर्मचारी: '+esc(n.employee_name||'—')+' · मोबाइल: '+esc(n.employee_phone||'—')+'<br>Leave: '+esc(n.customer_name||'—')+'<br>कारण/नोट: '+esc(n.customer_phone||'—')+'<br>Manager: '+esc(n.manager_name||'—')+' · Team Leader: '+esc(n.team_leader_name||'—')+'</small>';
+    }
+    if(n.event_type==='followup_created'||n.event_type==='visit_created'||n.event_type==='booking_created'||n.event_type==='call_logged'){
+      return '<b>'+esc(n.title)+'</b><small>ग्राहक: '+esc(n.customer_name||'—')+' · मोबाइल: '+esc(n.customer_phone||'—')+'<br>Project: '+esc(n.project_name||'—')+'<br>Owner: '+esc(n.owner_name||'—')+'<br>Entry By: '+esc(n.actor_name||'—')+' ('+esc(n.actor_role||'—')+')<br>Manager: '+esc(n.manager_name||'—')+' · Team Leader: '+esc(n.team_leader_name||'—')+'</small>';
+    }
     if(n.event_type==='lead_created'){
       return '<b>नई Lead: '+esc(n.customer_name)+'</b><small>ग्राहक मोबाइल: '+esc(n.customer_phone||'—')+'<br>Project: '+esc(n.project_name||'—')+'<br>Lead Owner: '+esc(n.owner_name||'Unassigned')+'<br>Entry By: '+esc(n.actor_name||'—')+' ('+esc(n.actor_role||'—')+')<br>Manager: '+esc(n.manager_name||'—')+' · Team Leader: '+esc(n.team_leader_name||'—')+'</small>';
     }
@@ -66,6 +75,26 @@
     }finally{busy=false;}
   }
 
+  function playAlert(){
+    try{
+      if(navigator.vibrate)navigator.vibrate([180,90,180]);
+      const Audio=window.AudioContext||window.webkitAudioContext;
+      if(!Audio)return;
+      const ctx=new Audio();
+      if(ctx.state==='suspended')ctx.resume();
+      [0,0.24,0.48].forEach((offset,i)=>{
+        const osc=ctx.createOscillator(),gain=ctx.createGain();
+        osc.type='sine';osc.frequency.value=i===1?1040:880;
+        gain.gain.setValueAtTime(0.0001,ctx.currentTime+offset);
+        gain.gain.exponentialRampToValueAtTime(0.12,ctx.currentTime+offset+0.02);
+        gain.gain.exponentialRampToValueAtTime(0.0001,ctx.currentTime+offset+0.16);
+        osc.connect(gain);gain.connect(ctx.destination);
+        osc.start(ctx.currentTime+offset);osc.stop(ctx.currentTime+offset+0.18);
+      });
+      setTimeout(()=>ctx.close(),1000);
+    }catch(err){console.warn('Notification sound:',err)}
+  }
+
   async function start(profile){
     stop();
     if(!profile||String(profile.role||'').toLowerCase()!=='admin')return;
@@ -76,6 +105,7 @@
     try{
       channel=client.channel('sr-admin-notifications-'+currentId)
         .on('postgres_changes',{event:'INSERT',schema:'public',table:'admin_notifications',filter:'recipient_id=eq.'+currentId},payload=>{
+          playAlert();
           const panel=document.getElementById('srAdminNoticePanel');
           if(panel&&!panel.hidden)load();else{
             const count=document.getElementById('srAdminUnread');
