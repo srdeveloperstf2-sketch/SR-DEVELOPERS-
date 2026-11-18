@@ -75,26 +75,13 @@
     accessibleOwnerIds=allowed;
     // Load the first page immediately; fetch additional pages only when needed.
     // This avoids a slow unbounded response while preserving every visible CRM record.
-    const pageSize=1000;
+    // Keep the login-critical request deliberately small. The remaining records
+    // are hydrated after the app is usable, so large CRM histories cannot block login.
+    const pageSize=250;
     const first=await client.from('crm_records').select('id,record_type,payload,owner_id,created_by,updated_at').range(0,pageSize-1);
     if(first.error){console.error(first.error);throw new Error('Cloud data load failed: '+first.error.message)}
     const data=[...(first.data||[])];
-    if(data.length===pageSize){
-      let from=pageSize;
-      while(true){
-        const batch=await Promise.all([0,1,2,3].map(offset=>
-          client.from('crm_records').select('id,record_type,payload,owner_id,created_by,updated_at').range(from+offset*pageSize,from+(offset+1)*pageSize-1)
-        ));
-        let reachedEnd=false;
-        for(const result of batch){
-          if(result.error) throw new Error('Cloud data load failed: '+result.error.message);
-          data.push(...(result.data||[]));
-          if((result.data||[]).length<pageSize){reachedEnd=true;break;}
-        }
-        if(reachedEnd) break;
-        from+=4*pageSize;
-      }
-    }
+    const hasMorePages=data.length===pageSize;
     // Recover safely if the app database was not attached to window before login.
     let db=window.srDb;
     if(!db || typeof db!=='object'){
@@ -174,6 +161,43 @@
       console.error('CRM background sync:',err);
       window.dispatchEvent(new CustomEvent('sr-cloud-error',{detail:err?.message||String(err)}));
     }),0);
+    // Continue loading older pages without blocking login or the first screen.
+    if(hasMorePages){
+      setTimeout(async()=>{
+        let from=pageSize, totalAdded=0;
+        try{
+          while(true){
+            const {data:page,error}=await client.from('crm_records')
+              .select('id,record_type,payload,owner_id,created_by,updated_at')
+              .range(from,from+pageSize-1);
+            if(error)throw new Error('Background cloud data load failed: '+error.message);
+            for(const row of (page||[])){
+              const key=reverse[row.record_type];if(!key)continue;
+              const payload={...row.payload,id:row.id,owner_id:row.owner_id,created_by:row.created_by};
+              if(!visibleOwner(key,payload)){
+                const stash=db._restrictedCache||(db._restrictedCache=[]);
+                if(!stash.some(x=>x.key===key&&x.item?.id===row.id))stash.push({key,item:payload});
+                continue;
+              }
+              const idx=dbIndex[key].get(row.id);
+              if(idx!==undefined)db[key][idx]=payload;
+              else{dbIndex[key].set(row.id,db[key].length);db[key].push(payload);}
+              totalAdded++;
+            }
+            localStorage.setItem('srcrm_v11',JSON.stringify(db));
+            window.srRender?.();
+            window.dispatchEvent(new CustomEvent('sr-cloud-progress',{detail:{loaded:loadedCount+totalAdded,totalAdded}}));
+            if((page||[]).length<pageSize)break;
+            from+=pageSize;
+            await new Promise(resolve=>setTimeout(resolve,0));
+          }
+          window.dispatchEvent(new CustomEvent('sr-cloud-background-complete',{detail:{loaded:loadedCount+totalAdded}}));
+        }catch(err){
+          console.error('CRM background hydration:',err);
+          window.dispatchEvent(new CustomEvent('sr-cloud-error',{detail:err?.message||String(err)}));
+        }
+      },0);
+    }
     window.srRender?.();
     window.dispatchEvent(new CustomEvent('sr-cloud-ready',{detail:{count:loadedCount,uploaded:0,skippedLocal:0,role:profile.role}}));
     return {loaded:loadedCount,uploaded:0,skippedLocal:0};
