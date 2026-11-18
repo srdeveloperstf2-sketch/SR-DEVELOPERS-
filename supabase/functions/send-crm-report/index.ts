@@ -38,6 +38,9 @@ Deno.serve(async (req: Request) => {
   if (!expected || !supplied || supplied !== expected) return response({ error: "Unauthorized" }, 401);
 
   try {
+    const body = await req.json().catch(() => ({}));
+    const reportType = body?.report_type === "evening" ? "evening" : "morning";
+    const reportLabel = reportType === "evening" ? "Evening Report" : "Morning Report";
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
     const serviceKey = Deno.env.get("SERVICE_ROLE_KEY") || Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
     const resendKey = Deno.env.get("RESEND_API_KEY");
@@ -79,7 +82,7 @@ Deno.serve(async (req: Request) => {
 
     const html = `
       <div style="font-family:Arial,sans-serif;max-width:680px;margin:auto;color:#202124">
-        <h2 style="color:#176b45">S.R. DEVELOPERS — CRM Activity Report</h2>
+        <h2 style="color:#176b45">S.R. DEVELOPERS — CRM ${reportLabel}</h2>
         <p><b>Report generated:</b> ${istDate} (IST)</p>
         <p>यह रिपोर्ट पिछले 24 घंटों में CRM में अपडेट हुए रिकॉर्ड का सारांश है।</p>
         <table style="width:100%;border-collapse:collapse">
@@ -95,7 +98,7 @@ Deno.serve(async (req: Request) => {
       body: JSON.stringify({
         from,
         to: [to],
-        subject: `S.R. DEVELOPERS CRM Report — ${istDate}`,
+        subject: `S.R. DEVELOPERS CRM — ${reportLabel} — ${istDate}`,
         html,
       }),
     });
@@ -105,6 +108,8 @@ Deno.serve(async (req: Request) => {
     return response({
       ok: true,
       sent_to: to,
+      report_type: reportType,
+      report_label: reportLabel,
       report_window: "last_24_hours",
       records_included: (data || []).length,
       counts,
