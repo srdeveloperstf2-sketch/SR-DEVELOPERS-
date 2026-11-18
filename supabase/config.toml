@@ -2,3 +2,6 @@ project_id = "amzqgvyslzvhcilawunc"
 
 [functions.login-with-employee-code]
 verify_jwt = false
+
+[functions.send-crm-report]
+verify_jwt = false
