@@ -56,7 +56,7 @@
     window.srEmployeeDirectory=profiles||[];
     // Client writes are limited to self and the authenticated user's reporting tree.
     // Supabase RLS remains the authoritative access-control boundary.
-    const currentRole=String(profile?.role||'').trim().toLowerCase();
+    const currentRole=String(profile?.role||'').trim().toLowerCase().replace(/[\s-]+/g,'_');
     const allowed=new Set([user.id]);
     if(currentRole==='admin') (profiles||[]).forEach(p=>allowed.add(p.id));
     else {
