@@ -116,6 +116,8 @@ declare
   v_manager text;
   v_team_leader text;
   v_payload jsonb;
+  v_related jsonb := '{}'::jsonb;
+  v_related_id uuid;
   v_kind text;
   v_title text;
 begin
@@ -123,6 +125,15 @@ begin
     return new;
   end if;
   v_payload := coalesce(new.payload,'{}'::jsonb);
+  begin
+    v_related_id := nullif(v_payload->>'lead','')::uuid;
+  exception when invalid_text_representation then
+    v_related_id := null;
+  end;
+  if v_related_id is not null then
+    select coalesce(payload,'{}'::jsonb) into v_related
+    from public.crm_records where id=v_related_id and record_type='lead';
+  end if;
   select * into v_actor from public.profiles where id=new.created_by;
   select * into v_owner from public.profiles where id=new.owner_id;
   select full_name into v_manager from public.profiles where id=v_owner.manager_id;
@@ -136,9 +147,9 @@ begin
   perform public.sr_notify_admins(
     v_kind,v_title,new.created_by,v_actor.full_name,v_actor.role,
     null,null,null,new.owner_id,v_owner.full_name,v_manager,v_team_leader,
-    coalesce(v_payload->>'name',v_payload->>'customer_name',''),
-    coalesce(v_payload->>'phone',''),
-    coalesce(v_payload->>'project',''),new.id
+    coalesce(v_payload->>'name',v_payload->>'customer_name',v_related->>'name',''),
+    coalesce(v_payload->>'phone',v_related->>'phone',''),
+    coalesce(v_payload->>'project',v_related->>'project',''),new.id
   );
   return new;
 end;
