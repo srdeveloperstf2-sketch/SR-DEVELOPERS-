@@ -164,7 +164,7 @@
       showApp(session.user,data);
       await loadVisibleTeamProfiles();
       if(isAdminProfile(data)) await initStaffAdmin();
-      setState('Cloud sync जुड़ा है · '+sync.loaded+' रिकॉर्ड लोड · '+sync.uploaded+' अपलोड'+(sync.skippedLocal?' · '+sync.skippedLocal+' दूसरे Staff के Local रिकॉर्ड सुरक्षा के कारण रोके गए':''));
+      setState('Cloud sync जुड़ा है · '+sync.loaded+' जरूरी रिकॉर्ड तुरंत लोड · '+(sync.backgroundLoading?'बाकी डेटा background में लोड हो रहा है':'सभी रिकॉर्ड लोड')+' · '+sync.uploaded+' अपलोड'+(sync.skippedLocal?' · '+sync.skippedLocal+' दूसरे Staff के Local रिकॉर्ड सुरक्षा के कारण रोके गए':''));
       window.dispatchEvent(new CustomEvent('sr-auth-ready',{detail:window.srCurrentProfile}));
     } catch(syncError) {
       showGate();
