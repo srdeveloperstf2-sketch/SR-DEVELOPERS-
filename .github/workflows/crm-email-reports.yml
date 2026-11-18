@@ -1,10 +1,6 @@
 name: S.R. Developers CRM Email Reports
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - ".github/workflows/crm-email-reports.yml"
   schedule:
     # 8:30 AM IST (03:00 UTC)
     - cron: "0 3 * * *"
