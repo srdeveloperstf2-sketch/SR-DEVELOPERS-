@@ -2,6 +2,11 @@ name: Deploy CRM Email Function
 
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'supabase/functions/send-crm-report/**'
+      - '.github/workflows/deploy-crm-email-function.yml'
 
 permissions:
   contents: read
