@@ -4,7 +4,7 @@ let db;
 try { db=JSON.parse(localStorage.getItem(K)||'{}'); } catch (_) { db={}; }
 if(!db || typeof db!=='object' || Array.isArray(db)) db={};
 ['leads','followups','visits','bookings','staff','messages','attendance','callLogs','inventory','payments','partners','partnerPayouts','resources'].forEach(k=>{if(!Array.isArray(db[k]))db[k]=[];});
-const $=id=>document.getElementById(id);const today=()=>new Date().toISOString().slice(0,10);const save=()=>{localStorage.setItem(K,JSON.stringify(db));if(window.srCloudReady&&window.srCloudPersist)window.srCloudPersist(db)};const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));const optProjects=()=>PROJECTS.map(p=>'<option>'+esc(p)+'</option>').join('');['lProject','vProject','bProject','iProject','cpProject'].forEach(id=>$(id).innerHTML=optProjects());
+const $=id=>document.getElementById(id);const today=()=>{const d=new Date();return [d.getFullYear(),String(d.getMonth()+1).padStart(2,'0'),String(d.getDate()).padStart(2,'0')].join('-')};const save=()=>{localStorage.setItem(K,JSON.stringify(db));if(window.srCloudReady&&window.srCloudPersist)window.srCloudPersist(db)};const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));const optProjects=()=>PROJECTS.map(p=>'<option>'+esc(p)+'</option>').join('');['lProject','vProject','bProject','iProject','cpProject'].forEach(id=>$(id).innerHTML=optProjects());
 function leadOptions(id){$(id).innerHTML=db.leads.map(l=>'<option value="'+l.id+'">'+esc(l.name)+' — '+esc(l.phone)+'</option>').join('')}
 function go(tab){document.querySelectorAll('.view').forEach(v=>v.classList.toggle('active',v.id===tab));document.querySelectorAll('[data-tab]').forEach(b=>b.classList.toggle('active',b.dataset.tab===tab));window.scrollTo(0,0)}
 document.querySelectorAll('[data-tab]').forEach(b=>b.onclick=()=>go(b.dataset.tab));document.querySelectorAll('[data-go]').forEach(b=>b.onclick=()=>go(b.dataset.go));
@@ -79,7 +79,7 @@ async function scheduleMorningSummary(){
   const id=reminderId('morning-summary',window.srCurrentProfile.id);
   await plugin.cancel({notifications:[{id}]});
   const now=new Date(),at=new Date(now);at.setHours(8,30,0,0);if(at<=now)at.setDate(at.getDate()+1);
-  const todayKey=at.toISOString().slice(0,10);
+  const todayKey=[at.getFullYear(),String(at.getMonth()+1).padStart(2,'0'),String(at.getDate()).padStart(2,'0')].join('-');
   const ownLeads=db.leads.filter(l=>(l.owner_id||l.ownerId)===window.srCurrentProfile.id||String(l.assigned||'').trim().toLowerCase()===String(window.srCurrentProfile.full_name||'').trim().toLowerCase());
   const ownIds=new Set(ownLeads.map(l=>l.id));
   const followups=db.followups.filter(x=>String(x.when||'').slice(0,10)===todayKey&&ownIds.has(x.lead)&&!x.calledAt);
@@ -90,7 +90,7 @@ async function scheduleMorningSummary(){
  }catch(e){console.warn('Morning summary schedule:',e)}
 }
 function contactActions(phone,leadId){const digits=String(phone||'').replace(/[^0-9]/g,'');return '<div class="contact-actions"><a href="tel:'+encodeURIComponent(phone||'')+'" data-lead="'+String(leadId||'')+'" onclick="logCall(this.dataset.lead)">📞 Call</a><a target="_blank" rel="noopener" href="https://wa.me/'+digits+'">WhatsApp</a></div>'}
-window.logCall=id=>{const lead=db.leads.find(x=>x.id===id);if(!lead)return;db.callLogs.push({id:crypto.randomUUID(),lead:id,phone:lead.phone,at:new Date().toISOString(),type:'call_button_clicked'});db.followups.filter(x=>x.lead===id&&!x.calledAt).forEach(x=>{x.calledAt=new Date().toISOString();cancelReminder('followup',x.id)});save();render()};
+window.logCall=id=>{const lead=db.leads.find(x=>x.id===id);if(!lead)return;db.callLogs.push({id:crypto.randomUUID(),lead:id,phone:lead.phone,at:new Date().toISOString(),type:'dialer_opened'});save();render()};
 function render(){
 $('pBooking').innerHTML=db.bookings.map(b=>'<option value="'+b.id+'">'+esc(nameOf(b.lead))+' · '+esc(b.project)+' · '+esc(b.unit)+'</option>').join('');
 $('lPartner').innerHTML='<option value="">Direct / कोई Partner नहीं</option>'+db.partners.filter(p=>p.status==='Active').map(p=>'<option value="'+p.id+'">'+esc(p.name)+' · '+esc(p.phone)+'</option>').join('');$('payPartner').innerHTML=db.partners.map(p=>'<option value="'+p.id+'">'+esc(p.name)+'</option>').join('');$('payBooking').innerHTML=db.bookings.map(b=>'<option value="'+b.id+'">'+esc(nameOf(b.lead))+' · '+esc(b.project)+' · '+esc(b.unit)+'</option>').join('');$('shareLead').innerHTML=db.leads.map(l=>'<option value="'+l.id+'">'+esc(l.name)+' — '+esc(l.phone)+'</option>').join('');
