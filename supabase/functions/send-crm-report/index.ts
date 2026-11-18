@@ -42,7 +42,7 @@ Deno.serve(async (req: Request) => {
     const reportType = body?.report_type === "evening" ? "evening" : "morning";
     const reportLabel = reportType === "evening" ? "Evening Report" : "Morning Report";
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
-    const serviceKey = Deno.env.get("SERVICE_ROLE_KEY") || Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || Deno.env.get("SERVICE_ROLE_KEY");
     const resendKey = Deno.env.get("RESEND_API_KEY");
     const from = Deno.env.get("REPORT_FROM_EMAIL");
     const to = Deno.env.get("ADMIN_REPORT_EMAIL") || "srdeveloperstf2@gmail.com";
