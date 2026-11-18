@@ -47,6 +47,33 @@
       throw err;
     }
   }
+  const DELETE_QUEUE_KEY='srcrm_pending_cloud_deletes_v1';
+  function readDeleteQueue(){try{return JSON.parse(localStorage.getItem(DELETE_QUEUE_KEY)||'[]')}catch(_){return []}}
+  function writeDeleteQueue(items){localStorage.setItem(DELETE_QUEUE_KEY,JSON.stringify(items))}
+  async function flushDeletes(){
+    if(!ready||!client||!user)return;
+    const pending=readDeleteQueue();
+    if(!pending.length)return;
+    const remaining=[];
+    for(const item of pending){
+      const type=types[item.key];
+      if(!type||!item.id)continue;
+      const {error}=await client.from('crm_records').delete().eq('id',item.id).eq('record_type',type);
+      if(error){remaining.push(item);console.error('CRM cloud delete:',error.message);window.dispatchEvent(new CustomEvent('sr-cloud-error',{detail:'Cloud delete failed: '+error.message}));}
+    }
+    writeDeleteQueue(remaining);
+    if(remaining.length)throw new Error('Some deleted records are waiting for cloud sync.');
+    window.dispatchEvent(new CustomEvent('sr-cloud-delete-complete',{detail:{deleted:pending.length}}));
+  }
+  async function deleteRecord(key,id){
+    if(!types[key]||!id)return;
+    const pending=readDeleteQueue();
+    if(!pending.some(x=>x.key===key&&x.id===id)){pending.push({key,id});writeDeleteQueue(pending);}
+    if(!ready||!client||!user)return {queued:true};
+    const task=queue.catch(()=>{}).then(flushDeletes);
+    queue=task;
+    return await task;
+  }
   async function init(supabase,userData,profileData){
     client=supabase;user=userData;profile=profileData;ready=false;
     window.srCloudReady=false;
@@ -139,7 +166,8 @@
     }
     db._restrictedCache=[...restored,...nextRestricted];
     localStorage.setItem('srcrm_v11',JSON.stringify(db));
-    window.srCloudPersist=persist;ready=true;window.srCloudReady=true;
+    window.srCloudPersist=persist;window.srCloudDelete=deleteRecord;ready=true;window.srCloudReady=true;
+    try{await flushDeletes()}catch(err){console.warn('Pending CRM deletes will retry:',err.message)}
     const loadedCount=data.length;
     // Do not hold the login screen open while uploading old local records.
     // Background migration is safe: only records owned by this user/Admin are queued.
