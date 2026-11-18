@@ -1,4 +1,4 @@
-const C='sr-crm-v36';
+const C='sr-crm-v37';
 const ASSETS=['./','./index.html','./styles.css','./staff-control.css','./staff-control.js','./partner-admin.js','./cloud-sync.js','./auth.js','./app.js','./emi.js','./manifest.webmanifest','./icon.svg','./notifications.js','./crm-insights.js'];
 self.addEventListener('install',e=>e.waitUntil(caches.open(C).then(c=>c.addAll(ASSETS)).then(()=>self.skipWaiting())));
 self.addEventListener('activate',e=>e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==C).map(k=>caches.delete(k)))).then(()=>self.clients.claim())));
