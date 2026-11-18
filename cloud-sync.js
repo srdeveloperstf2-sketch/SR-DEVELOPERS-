@@ -200,7 +200,7 @@
     }
     window.srRender?.();
     window.dispatchEvent(new CustomEvent('sr-cloud-ready',{detail:{count:loadedCount,uploaded:0,skippedLocal:0,role:profile.role}}));
-    return {loaded:loadedCount,uploaded:0,skippedLocal:0};
+    return {loaded:loadedCount,uploaded:0,skippedLocal:0,backgroundLoading:hasMorePages};
   }
   window.srCloudInit=init;
   window.addEventListener('online',()=>{if(ready&&window.srDb)persist(window.srDb)});
