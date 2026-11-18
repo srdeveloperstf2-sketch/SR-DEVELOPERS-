@@ -72,6 +72,7 @@
     </div>`;
   const dashboard = document.getElementById('dashboard');
   if (dashboard) dashboard.appendChild(root);
+  if(!isManager()) root.querySelector('[data-ins-tab="team"]').hidden=true;
 
   function refresh() {
     const d = db(), leads = visibleLeads(), fups = (d.followups || []).filter(f => canSeeLead(leadById(f.lead)));
@@ -96,6 +97,7 @@
     renderCustomerOptions();
   }
   function renderTeam() {
+    if(!isManager()){$('insTeamTable').innerHTML='<p class="ins-muted">Manager Monitoring केवल Admin, Manager और Team Leader के लिए उपलब्ध है।</p>';return;}
     const d=db(), day=$('insReportDate')?.value || today(), staff=(window.srEmployeeDirectory||[]).map(p=>({id:p.id,name:p.full_name,role:p.role})).filter(p=>p.id);
     if(!staff.length) (d.staff||[]).forEach(s=>staff.push({id:s.id,name:s.name,role:s.role}));
     const rows=staff.map(s=>{
