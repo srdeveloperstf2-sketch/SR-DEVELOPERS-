@@ -11,42 +11,6 @@
   const canAdmin = () => me?.role==='admin';
   const canReview = () => ['admin','manager','team_leader'].includes(me?.role);
   const activeProfiles = () => profiles.filter(p=>p.is_active);
-  async function resetAllStaffLogins(button, output){
-    if(!canAdmin())return;
-    const staffCount=profiles.filter(p=>['manager','team_leader','sales_executive'].includes(p.role)).length;
-    if(!staffCount){status('कोई गैर-Admin Staff Account नहीं मिला।',true);return;}
-    if(!confirm('सावधान: '+staffCount+' गैर-Admin कर्मचारियों के पुराने Password तुरंत बदलेंगे और Employee IDs को SRD0001 से फिर क्रम में लगाया जाएगा। Admin Login और CRM Records सुरक्षित रहेंगे। आगे बढ़ें?'))return;
-    const typed=prompt('पुष्टि के लिए RESET लिखें।');
-    if(typed!=='RESET')return;
-    button.disabled=true;button.textContent='सुरक्षित रीसेट चल रहा है…';output.textContent='कृपया पेज बंद न करें। सभी Staff Accounts जाँचे जा रहे हैं…';
-    try{
-      const {data,error}=await client.functions.invoke('admin-reset-all-staff-logins',{body:{confirm:'RESET_ALL_NON_ADMIN_STAFF'}});
-      if(error)throw error;
-      if(!data?.success){
-        const partial=(data?.credentials||[]).map(x=>[x.employeeCode||'ID जाँचें',x.fullName,x.temporaryPassword].join(' | ')).join('\\n');
-        output.textContent=(data?.error||'रीसेट पूरा नहीं हुआ।')+(partial?'\\n\\nसफलतापूर्वक बदले गए Login:\\n'+partial:'');
-        status(data?.error||'Bulk Reset पूरा नहीं हुआ।',true);return;
-      }
-      const lines=(data.credentials||[]).map(x=>[x.employeeCode,x.fullName,roleLabel(x.role),x.phone||'—',x.temporaryPassword].join(' | '));
-      output.textContent='नई Staff Login Details (केवल एक बार):\\nID | नाम | Role | Mobile | Temporary Password\\n'+lines.join('\\n')+'\\n\\n'+(data.note||'');
-      status(data.message||'सभी Staff Login रीसेट हो गए।');
-      if(navigator.clipboard?.writeText){try{await navigator.clipboard.writeText(output.textContent);status('नई Staff Login Details Clipboard में कॉपी हो गई हैं। इन्हें सुरक्षित रखें।');}catch{}}
-      await refresh();
-    }catch(err){
-      const message=err?.context?.error||err?.message||String(err);
-      output.textContent='रीसेट नहीं हुआ: '+message;status('Bulk Staff Reset नहीं हुआ: '+message,true);
-    }finally{button.disabled=false;button.textContent='सभी Staff IDs और Password नए करें';}
-  }
-  function ensureBulkResetControl(){
-    const host=$('scAdminPanel');if(!host||host.querySelector('#scBulkReset'))return;
-    const box=document.createElement('section');box.className='sc-credentials';
-    const title=document.createElement('b');title.textContent='सभी Staff Login एक साथ नए करें';
-    const note=document.createElement('p');note.textContent='केवल Manager, Team Leader और Sales Executive प्रभावित होंगे। Admin और CRM Records सुरक्षित रहेंगे।';
-    const button=document.createElement('button');button.type='button';button.id='scBulkReset';button.className='tiny danger';button.textContent='सभी Staff IDs और Password नए करें';
-    const output=document.createElement('pre');output.id='scBulkResetOutput';output.setAttribute('aria-live','polite');output.style.whiteSpace='pre-wrap';output.style.overflowWrap='anywhere';
-    button.addEventListener('click',()=>resetAllStaffLogins(button,output));
-    box.append(title,note,button,output);host.appendChild(box);
-  }
   function navVisibility(){
     const tabs=document.querySelector('#tabs');
     let b=tabs.querySelector('[data-tab="staffControl"]');
@@ -59,7 +23,6 @@
     $('scTeamPanel').hidden=!canReview();
     $('scReportPanel').hidden=!canReview();
     $('scAdminPanel').hidden=!canAdmin();
-    if(canAdmin())ensureBulkResetControl();
     $('scAdminNote').hidden=canReview();
     $('scAttendancePanel').hidden=false;
     $('scLeavePanel').hidden=false;
