@@ -86,12 +86,18 @@
     for(const key of Object.keys(types)) if(!Array.isArray(db[key])) db[key]=[];
     window.srDb=db;
     const seen=new Set();
+    // Build per-collection ID indexes once. Repeated Array.findIndex() made
+    // cloud hydration quadratic as each employee's CRM history grew.
+    const dbIndex=Object.fromEntries(Object.keys(types).map(key=>[
+      key,new Map((db[key]||[]).map((item,index)=>[item.id,index]))
+    ]));
     for(const row of (data||[])){
       const key=reverse[row.record_type];if(!key)continue;
       db[key]=db[key]||[];
       const payload={...row.payload,id:row.id,owner_id:row.owner_id,created_by:row.created_by};
-      const idx=db[key].findIndex(x=>x.id===row.id);
-      if(idx>=0)db[key][idx]=payload;else db[key].push(payload);
+      const idx=dbIndex[key].get(row.id);
+      if(idx!==undefined)db[key][idx]=payload;
+      else {dbIndex[key].set(row.id,db[key].length);db[key].push(payload);}
       seen.add(row.id);
     }
     for(const key of Object.keys(types))if(!Array.isArray(db[key]))db[key]=[];
