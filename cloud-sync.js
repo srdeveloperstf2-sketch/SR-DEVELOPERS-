@@ -78,7 +78,7 @@
     // Keep the login-critical request deliberately small. The remaining records
     // are hydrated after the app is usable, so large CRM histories cannot block login.
     const pageSize=250;
-    const first=await client.from('crm_records').select('id,record_type,payload,owner_id,created_by,updated_at').range(0,pageSize-1);
+    const first=await client.from('crm_records').select('id,record_type,payload,owner_id,created_by,updated_at').order('id',{ascending:true}).range(0,pageSize-1);
     if(first.error){console.error(first.error);throw new Error('Cloud data load failed: '+first.error.message)}
     const data=[...(first.data||[])];
     const hasMorePages=data.length===pageSize;
@@ -169,7 +169,7 @@
           while(true){
             const {data:page,error}=await client.from('crm_records')
               .select('id,record_type,payload,owner_id,created_by,updated_at')
-              .range(from,from+pageSize-1);
+              .order('id',{ascending:true}).range(from,from+pageSize-1);
             if(error)throw new Error('Background cloud data load failed: '+error.message);
             for(const row of (page||[])){
               const key=reverse[row.record_type];if(!key)continue;
