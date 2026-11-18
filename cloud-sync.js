@@ -231,5 +231,5 @@
     return {loaded:loadedCount,uploaded:0,skippedLocal:0,backgroundLoading:hasMorePages};
   }
   window.srCloudInit=init;
-  window.addEventListener('online',()=>{if(ready&&window.srDb)persist(window.srDb)});
+  window.addEventListener('online',async()=>{if(!ready||!window.srDb)return;try{await flushDeletes()}catch(err){console.warn('Pending CRM deletes still waiting:',err.message)}try{await persist(window.srDb)}catch(err){console.warn('CRM cloud sync retry failed:',err.message)}});
 })();
