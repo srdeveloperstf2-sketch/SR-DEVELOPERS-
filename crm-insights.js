@@ -72,7 +72,7 @@
     </div>`;
   const dashboard = document.getElementById('dashboard');
   if (dashboard) dashboard.appendChild(root);
-  if(!isManager()) root.querySelector('[data-ins-tab="team"]').hidden=true;
+  const updateAccess=()=>{root.querySelector('[data-ins-tab="team"]').hidden=!isManager();};
 
   function refresh() {
     const d = db(), leads = visibleLeads(), fups = (d.followups || []).filter(f => canSeeLead(leadById(f.lead)));
@@ -153,8 +153,9 @@
     refresh();
   };
   window.addEventListener('sr-cloud-ready',refresh);
-  window.addEventListener('sr-auth-ready',refresh);
+  window.addEventListener('sr-auth-ready',()=>{updateAccess();refresh();});
   document.addEventListener('submit',e=>{if(e.target.closest('#dashboard')||e.target.closest('#leads')||e.target.closest('#followups')||e.target.closest('#visits')||e.target.closest('#bookings'))setTimeout(refresh,0);});
   const oldRender=window.srRender;window.srRender=()=>{oldRender?.();refresh();};
+  updateAccess();
   refresh();
 })();
