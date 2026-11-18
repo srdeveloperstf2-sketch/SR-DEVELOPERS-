@@ -65,8 +65,16 @@ Deno.serve(async (req: Request) => {
     if (!uuid.test(userId)) return reply(req, { error: "कर्मचारी ID सही नहीं है।" }, 400);
 
     const { data: target, error: targetError } = await admin.from("profiles")
-      .select("id,full_name,employee_code,phone,is_active").eq("id", userId).maybeSingle();
+      .select("id,full_name,employee_code,phone,is_active,role").eq("id", userId).maybeSingle();
     if (targetError || !target) return reply(req, { error: "कर्मचारी रिकॉर्ड नहीं मिला।" }, 404);
+    // Admin credentials must never be reset through the staff-password workflow.
+    // This protects the company's primary administrator account from accidental changes.
+    if (target.role === "admin") {
+      return reply(req, { error: "Admin Account का Password इस Staff Reset विकल्प से नहीं बदला जा सकता।" }, 403);
+    }
+    if (target.is_active !== true) {
+      return reply(req, { error: "Inactive / archived कर्मचारी का Password Reset नहीं किया जा सकता। पहले Admin से Account Status जाँचें।" }, 403);
+    }
 
     const temporaryPassword = makeTemporaryPassword();
     const { error: updateError } = await admin.auth.admin.updateUserById(userId, { password: temporaryPassword });
