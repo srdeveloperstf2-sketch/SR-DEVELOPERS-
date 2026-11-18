@@ -5,3 +5,6 @@ verify_jwt = false
 
 [functions.send-crm-report]
 verify_jwt = false
+
+[functions.timelinesai-webhook]
+verify_jwt = false
