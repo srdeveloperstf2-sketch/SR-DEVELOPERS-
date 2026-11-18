@@ -149,7 +149,7 @@ let leadSearchTimer; $('leadSearch').oninput=()=>{clearTimeout(leadSearchTimer);
 $('importFile').onchange=async e=>{const f=e.target.files[0];if(!f)return;try{const x=JSON.parse(await f.text());if(!x.leads||!x.staff)throw Error();db=x;save();render();alert('Backup restore हो गया।')}catch{alert('यह backup file सही नहीं है।')}};
 window.srDb=db;window.srRender=render;window.addEventListener('sr-cloud-ready',()=>{if(window.srCurrentProfile)scheduleMorningSummary()});window.addEventListener('sr-auth-ready',()=>scheduleMorningSummary());
 window.srSetProfiles=profiles=>{
- const local=(db.staff||[]).filter(x=>!x.profileId);
+ const local=String(window.srCurrentProfile?.role||'').trim().toLowerCase()==='admin'?(db.staff||[]).filter(x=>!x.profileId):[];
  const mapped=(profiles||[]).map(p=>({id:p.id,profileId:p.id,name:p.full_name||p.email||'Staff',phone:p.phone||'',role:p.role==='sales_executive'?'Sales Executive':p.role==='team_leader'?'Team Leader':p.role==='manager'?'Manager':'Admin',target:'',managerId:p.manager_id||'',managerName:(profiles||[]).find(m=>m.id===p.manager_id)?.full_name||'',active:p.is_active!==false}));
  db.staff=[...local,...mapped];render();
 };
