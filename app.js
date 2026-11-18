@@ -34,37 +34,63 @@ async function askReminderPermission(){
  return null;
 }
 function reminderId(type,id){let s=type+':'+id,h=2166136261;for(let i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,16777619)}return (h>>>0)%2000000000+1}
+function reminderIds(type,id,count=36){return Array.from({length:count},(_,i)=>reminderId(type,id+'-'+i))}
 async function cancelReminder(type,id){
  const plugin=getLocalNotifications();if(!plugin)return;
- try{await plugin.cancel({notifications:[{id:reminderId(type,id)}]})}catch(e){console.warn('Reminder cancel:',e)}
+ try{await plugin.cancel({notifications:reminderIds(type,id).map(id=>({id}))})}catch(e){console.warn('Reminder cancel:',e)}
 }
 async function scheduleReminder(type,item,mins){
  if(mins===-1||mins===undefined||mins===null)return {ok:true,skipped:true};
- const eventAt=new Date(item.when).getTime(),at=eventAt-(Number(mins)||0)*60000;
- if(!Number.isFinite(eventAt)||at<=Date.now())return {ok:false,reason:'past'};
+ const eventAt=new Date(item.when).getTime();
+ if(!Number.isFinite(eventAt)||eventAt<=Date.now())return {ok:false,reason:'past'};
  const lead=db.leads.find(l=>l.id===item.lead),name=lead?.name||'ग्राहक';
  const isVisit=type==='visit';
- const title=isVisit?'S.R. DEVELOPERS — Site Visit':'S.R. DEVELOPERS — Follow-up';
+ const title=isVisit?'S.R. DEVELOPERS — Site Visit':'S.R. DEVELOPERS — Follow-up Call';
  const action=isVisit?'ग्राहक की Site Visit है।':'ग्राहक को Follow-up Call करना है।';
  const body=name+' · '+(item.project||lead?.project||'S.R. Developers')+' — '+action+(item.notes?' '+item.notes:'');
- const id=reminderId(type,item.id),plugin=getLocalNotifications();
+ const plugin=getLocalNotifications();
  if(plugin){
   try{
-   await plugin.cancel({notifications:[{id}]});
-   await plugin.schedule({notifications:[{id,title,body,smallIcon:'ic_launcher',sound:'default',channelId:'crm-reminders',schedule:{at:new Date(at),allowWhileIdle:true},extra:{type,recordId:item.id}}]});
-   return {ok:true,native:true};
+   const ids=reminderIds(type,item.id);
+   await plugin.cancel({notifications:ids.map(id=>({id}))});
+   const firstAt=Math.max(Date.now()+5000,eventAt-60*60000);
+   const notices=[];
+   for(let i=0;i<ids.length;i++){
+    const at=firstAt+i*5*60000;
+    if(at>eventAt+60*60000)break;
+    notices.push({id:ids[i],title,body:body+' · Call/कार्य पूरा होने पर CRM में Call बटन दबाएँ।',smallIcon:'ic_launcher',sound:'default',channelId:'crm-reminders',schedule:{at:new Date(at),allowWhileIdle:true},extra:{type,recordId:item.id,leadId:item.lead}});
+   }
+   if(!notices.length)return {ok:false,reason:'past'};
+   await plugin.schedule({notifications:notices});
+   return {ok:true,native:true,count:notices.length};
   }catch(error){console.error('Native reminder schedule failed:',error);return {ok:false,reason:error.message||'schedule_failed'}}
  }
  if('Notification'in window&&Notification.permission==='granted'){
-  const delay=at-Date.now();
+  const at=Math.max(Date.now()+5000,eventAt-60*60000),delay=at-Date.now();
   if(delay>2147480000)return {ok:false,reason:'too_far'};
-  setTimeout(()=>{if(Date.now()>=at)new Notification(title,{body,tag:type+'-'+item.id})},delay);
+  setTimeout(()=>{if(Date.now()>=at)new Notification(title,{body,tag:type+'-'+item.id,silent:false})},delay);
   return {ok:true,browser:true};
  }
  return {ok:false,reason:'permission'};
 }
+async function scheduleMorningSummary(){
+ const plugin=getLocalNotifications();if(!plugin||!window.srCurrentProfile)return;
+ try{
+  const id=reminderId('morning-summary',window.srCurrentProfile.id);
+  await plugin.cancel({notifications:[{id}]});
+  const now=new Date(),at=new Date(now);at.setHours(8,30,0,0);if(at<=now)at.setDate(at.getDate()+1);
+  const todayKey=at.toISOString().slice(0,10);
+  const ownLeads=db.leads.filter(l=>(l.owner_id||l.ownerId)===window.srCurrentProfile.id||String(l.assigned||'').trim().toLowerCase()===String(window.srCurrentProfile.full_name||'').trim().toLowerCase());
+  const ownIds=new Set(ownLeads.map(l=>l.id));
+  const followups=db.followups.filter(x=>String(x.when||'').slice(0,10)===todayKey&&ownIds.has(x.lead)&&!x.calledAt);
+  const visits=db.visits.filter(x=>String(x.when||'').slice(0,10)===todayKey&&ownIds.has(x.lead));
+  const lines=[...followups.slice(0,5).map(x=>'Call: '+(db.leads.find(l=>l.id===x.lead)?.name||'Customer')),...visits.slice(0,5).map(x=>'Visit: '+(db.leads.find(l=>l.id===x.lead)?.name||'Customer'))];
+  const body='आज '+followups.length+' Follow-up और '+visits.length+' Site Visit हैं। '+(lines.join(' | ')||'CRM खोलकर आज के काम देखें।');
+  await plugin.schedule({notifications:[{id,title:'S.R. Developers — आज का Morning Work Plan',body:body.slice(0,500),smallIcon:'ic_launcher',sound:'default',channelId:'crm-reminders',schedule:{at,allowWhileIdle:true},extra:{type:'morning-summary'}}]});
+ }catch(e){console.warn('Morning summary schedule:',e)}
+}
 function contactActions(phone,leadId){const digits=String(phone||'').replace(/[^0-9]/g,'');return '<div class="contact-actions"><a href="tel:'+encodeURIComponent(phone||'')+'" data-lead="'+String(leadId||'')+'" onclick="logCall(this.dataset.lead)">📞 Call</a><a target="_blank" rel="noopener" href="https://wa.me/'+digits+'">WhatsApp</a></div>'}
-window.logCall=id=>{const lead=db.leads.find(x=>x.id===id);if(!lead)return;db.callLogs.push({id:crypto.randomUUID(),lead:id,phone:lead.phone,at:new Date().toISOString(),type:'dialer_opened'});save();render()};
+window.logCall=id=>{const lead=db.leads.find(x=>x.id===id);if(!lead)return;db.callLogs.push({id:crypto.randomUUID(),lead:id,phone:lead.phone,at:new Date().toISOString(),type:'call_button_clicked'});db.followups.filter(x=>x.lead===id&&!x.calledAt).forEach(x=>{x.calledAt=new Date().toISOString();cancelReminder('followup',x.id)});save();render()};
 function render(){
 $('pBooking').innerHTML=db.bookings.map(b=>'<option value="'+b.id+'">'+esc(nameOf(b.lead))+' · '+esc(b.project)+' · '+esc(b.unit)+'</option>').join('');
 $('lPartner').innerHTML='<option value="">Direct / कोई Partner नहीं</option>'+db.partners.filter(p=>p.status==='Active').map(p=>'<option value="'+p.id+'">'+esc(p.name)+' · '+esc(p.phone)+'</option>').join('');$('payPartner').innerHTML=db.partners.map(p=>'<option value="'+p.id+'">'+esc(p.name)+'</option>').join('');$('payBooking').innerHTML=db.bookings.map(b=>'<option value="'+b.id+'">'+esc(nameOf(b.lead))+' · '+esc(b.project)+' · '+esc(b.unit)+'</option>').join('');$('shareLead').innerHTML=db.leads.map(l=>'<option value="'+l.id+'">'+esc(l.name)+' — '+esc(l.phone)+'</option>').join('');
@@ -121,7 +147,7 @@ $('paymentForm').onsubmit=e=>{e.preventDefault();if(!$('pBooking').value){alert(
 $('partnerForm').onsubmit=e=>{e.preventDefault();db.partners.push({id:crypto.randomUUID(),name:$('cpName').value,phone:$('cpPhone').value,firm:$('cpFirm').value,type:$('cpType').value,manager:$('cpManager').value,area:$('cpArea').value,kycRef:$('cpKyc').value,commission:$('cpCommission').value,project:$('cpProject').value,status:$('cpStatus').value});e.target.reset();save();render();alert('Channel partner सेव हो गया।')};$('payoutForm').onsubmit=e=>{e.preventDefault();db.partnerPayouts.push({id:crypto.randomUUID(),partner:$('payPartner').value,booking:$('payBooking').value,amount:$('payAmount').value,status:$('payStatus').value,date:$('payDate').value,ref:$('payRef').value,notes:$('payNotes').value});e.target.reset();save();render();alert('Broker commission entry सेव हो गई।')};
 let leadSearchTimer; $('leadSearch').oninput=()=>{clearTimeout(leadSearchTimer);leadSearchTimer=setTimeout(render,180)};$('export').onclick=()=>{const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(db,null,2)],{type:'application/json'}));a.download='sr-developers-crm-backup.json';a.click();URL.revokeObjectURL(a.href)};
 $('importFile').onchange=async e=>{const f=e.target.files[0];if(!f)return;try{const x=JSON.parse(await f.text());if(!x.leads||!x.staff)throw Error();db=x;save();render();alert('Backup restore हो गया।')}catch{alert('यह backup file सही नहीं है।')}};
-window.srDb=db;window.srRender=render;
+window.srDb=db;window.srRender=render;window.addEventListener('sr-cloud-ready',()=>{if(window.srCurrentProfile)scheduleMorningSummary()});window.addEventListener('sr-auth-ready',()=>scheduleMorningSummary());
 window.srSetProfiles=profiles=>{
  const local=(db.staff||[]).filter(x=>!x.profileId);
  const mapped=(profiles||[]).map(p=>({id:p.id,profileId:p.id,name:p.full_name||p.email||'Staff',phone:p.phone||'',role:p.role==='sales_executive'?'Sales Executive':p.role==='team_leader'?'Team Leader':p.role==='manager'?'Manager':'Admin',target:'',managerId:p.manager_id||'',managerName:(profiles||[]).find(m=>m.id===p.manager_id)?.full_name||'',active:p.is_active!==false}));
