@@ -127,10 +127,11 @@
     const visibleOwner=(key,item)=>{
       if(isAdmin())return true;
       if(item.created_by===user.id||item.createdById===user.id)return true;
-      let owner=item.owner_id||item.ownerId||byName(item.assigned);
+      const byNameLocal=name=>profileByName.get(String(name||'').trim().toLowerCase());
+      let owner=item.owner_id||item.ownerId||byNameLocal(item.assigned);
       if(!owner&&['followups','visits','bookings'].includes(key)){
         const lead=(db.leads||[]).find(x=>x.id===item.lead);
-        owner=lead?.owner_id||lead?.ownerId||byName(lead?.assigned)||lead?.created_by;
+        owner=lead?.owner_id||lead?.ownerId||byNameLocal(lead?.assigned)||lead?.created_by;
       }
       return !!owner&&accessibleOwnerIds.has(owner);
     };
