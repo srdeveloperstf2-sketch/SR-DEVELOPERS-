@@ -22,7 +22,7 @@
     if(!tools)return;
     const wrap=document.createElement('div');
     wrap.id='srAdminBell';
-    wrap.innerHTML='<button type="button" id="srAdminBellButton" aria-expanded="false">🔔 Notifications <span id="srAdminUnread" class="sr-count" hidden>0</span></button><section id="srAdminNoticePanel" hidden><div class="sr-notice-head"><b>Admin Activity Notifications</b><button type="button" id="srAdminRefresh" class="tiny secondary">Refresh</button></div><div id="srAdminNoticeList">Loading…</div></section>';
+    wrap.innerHTML='<button type="button" id="srAdminBellButton" aria-expanded="false">🔔 Notifications <span id="srAdminUnread" class="sr-count" hidden>0</span></button><section id="srAdminNoticePanel" hidden><div class="sr-notice-head"><b>Team Activity Notifications</b><button type="button" id="srAdminRefresh" class="tiny secondary">Refresh</button></div><div id="srAdminNoticeList">Loading…</div></section>';
     tools.insertBefore(wrap,tools.firstChild);
     wrap.querySelector('#srAdminBellButton').addEventListener('click',()=>{
       const panel=wrap.querySelector('#srAdminNoticePanel');
@@ -97,13 +97,13 @@
 
   async function start(profile){
     stop();
-    if(!profile||String(profile.role||'').toLowerCase()!=='admin')return;
+    if(!profile||!profile.id)return;
     ensureUI();
     client=window.srSupabase;currentId=profile.id;
     if(!client||!currentId)return;
     await load();
     try{
-      channel=client.channel('sr-admin-notifications-'+currentId)
+      channel=client.channel('sr-team-notifications-'+currentId)
         .on('postgres_changes',{event:'INSERT',schema:'public',table:'admin_notifications',filter:'recipient_id=eq.'+currentId},payload=>{
           playAlert();
           const panel=document.getElementById('srAdminNoticePanel');
@@ -113,7 +113,7 @@
             if(count){count.textContent=String(old+1);count.hidden=false;}
           }
         }).subscribe();
-    }catch(err){console.warn('Admin notification realtime:',err);}
+    }catch(err){console.warn('Team notification realtime:',err);}
     timer=setInterval(load,30000);
   }
 
