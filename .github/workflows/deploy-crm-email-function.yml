@@ -24,4 +24,4 @@ jobs:
             echo "::error::Add SUPABASE_ACCESS_TOKEN in GitHub repository Actions secrets first."
             exit 1
           fi
-          supabase functions deploy send-crm-report --project-ref amzqgvyslzvhcilawunc
+          supabase functions deploy send-crm-report --project-ref amzqgvyslzvhcilawunc --yes
