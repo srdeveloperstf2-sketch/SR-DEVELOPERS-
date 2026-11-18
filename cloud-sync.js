@@ -119,6 +119,37 @@
       seen.add(row.id);
     }
     for(const key of Object.keys(types))if(!Array.isArray(db[key]))db[key]=[];
+    // Keep locally cached records from other reporting lines out of the active UI.
+    // They are quarantined locally (not deleted) and restored automatically for Admin
+    // or when the signed-in employee gains legitimate access later.
+    const restricted=Array.isArray(db._restrictedCache)?db._restrictedCache:[];
+    const restored=[];
+    const visibleOwner=(key,item)=>{
+      if(isAdmin())return true;
+      if(item.created_by===user.id||item.createdById===user.id)return true;
+      let owner=item.owner_id||item.ownerId||byName(item.assigned);
+      if(!owner&&['followups','visits','bookings'].includes(key)){
+        const lead=(db.leads||[]).find(x=>x.id===item.lead);
+        owner=lead?.owner_id||lead?.ownerId||byName(lead?.assigned)||lead?.created_by;
+      }
+      return !!owner&&accessibleOwnerIds.has(owner);
+    };
+    for(const cached of restricted){
+      if(types[cached.key]&&cached.item&&visibleOwner(cached.key,cached.item)){
+        const list=db[cached.key]||(db[cached.key]=[]);
+        if(!list.some(x=>x.id===cached.item.id))list.push(cached.item);
+      } else restored.push(cached);
+    }
+    const nextRestricted=[];
+    for(const key of Object.keys(types)){
+      const keep=[];
+      for(const item of db[key]){
+        if(visibleOwner(key,item))keep.push(item);
+        else nextRestricted.push({key,item});
+      }
+      db[key]=keep;
+    }
+    db._restrictedCache=[...restored,...nextRestricted];
     localStorage.setItem('srcrm_v11',JSON.stringify(db));
     window.srCloudPersist=persist;ready=true;window.srCloudReady=true;
     const loadedCount=data.length;
