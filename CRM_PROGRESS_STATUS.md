@@ -72,3 +72,17 @@ The web deployment and debug APK build are successful. The application is NOT ye
 5. Run two-device sync and role-permission tests with test accounts.
 6. Generate, install and validate the signed Android release.
 7. Only then approve staff-wide rollout.
+
+
+## 7. Follow-up safety audit — 18 November 2026
+- Removed the one-click bulk staff reset control from Staff Control. It previously changed every non-Admin staff password and rewrote employee codes from SRD0001; this is not appropriate before the agreed backup/inventory/archive plan.
+- Hardened the individual staff-password reset Edge Function: it now refuses Admin profiles and inactive/archived profiles. Existing Admin credentials and inactive trial accounts are protected from this workflow.
+- Code commits: staff-control.js `df06434438d86936f201c8947046a887813f923a`; admin-reset-staff-password Edge Function `af0482b306ee8d911b682844f74a369a3bf3a408`.
+- GitHub Actions Android APK build and Pages deployment were queued for the latest commit when checked; completion has not yet been verified.
+- These are repository code changes only. The Edge Function change still needs deployment to Supabase before it affects the live function. No Supabase database migration, account reset, account deletion, or customer-data modification was performed.
+
+## 8. Immediate next work
+1. Finish read-only audit of all staff/auth Edge Functions and RLS migrations.
+2. Capture and verify a current Supabase database backup and live schema inventory before any database change.
+3. Reconcile Auth users against profiles, preserving all existing trial accounts and CRM records; prepare a proposed archive/deactivation list for Admin approval.
+4. Deploy and verify only the reviewed Edge Function changes; then test one approved test employee without touching the existing Admin login.
