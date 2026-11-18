@@ -115,7 +115,7 @@
   function renderTeam() {
     if(!isManager()){$('insTeamTable').innerHTML='<p class="ins-muted">Manager Monitoring केवल Admin, Manager और Team Leader के लिए उपलब्ध है।</p>';return;}
     const d=db(), day=$('insReportDate')?.value || today(), staff=visibleStaff().map(p=>({id:p.id,name:p.full_name,role:p.role})).filter(p=>p.id);
-    if(!staff.length) (d.staff||[]).forEach(s=>staff.push({id:s.id,name:s.name,role:s.role}));
+    // Never fall back to an unrestricted locally cached staff list.
     const rows=staff.map(s=>{
       const mine=(d.leads||[]).filter(l=>canSeeLead(l)&&(leadOwner(l)===s.id||nameToId(l.assigned)===s.id));
       const ids=new Set(mine.map(l=>l.id));
