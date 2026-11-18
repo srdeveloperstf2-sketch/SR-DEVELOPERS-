@@ -41,6 +41,16 @@ jobs:
         with:
           distribution: temurin
           java-version: '21'
+      - name: Validate CRM JavaScript syntax
+        run: |
+          node --check app.js
+          node --check emi.js
+          node --check cloud-sync.js
+          node --check auth.js
+          node --check staff-control.js
+          node --check notifications.js
+          node --check partner-admin.js
+          node --check crm-insights.js
       - name: Install dependencies
         run: npm install
       - name: Prepare web assets
