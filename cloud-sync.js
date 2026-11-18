@@ -53,8 +53,26 @@
     const {data:profiles,error:profilesError}=await client.from('profiles').select('id,employee_code,full_name,role,manager_id,team_leader_id,is_active').eq('is_active',true);
     if(profilesError) throw new Error('Staff directory load failed: '+profilesError.message);
     profileByName=new Map((profiles||[]).map(p=>[String(p.full_name||'').trim().toLowerCase(),p.id]));
-    accessibleOwnerIds=new Set([user.id,...(profiles||[]).map(p=>p.id)]);
     window.srEmployeeDirectory=profiles||[];
+    // Client writes are limited to self and the authenticated user's reporting tree.
+    // Supabase RLS remains the authoritative access-control boundary.
+    const currentRole=String(profile?.role||'').trim().toLowerCase();
+    const allowed=new Set([user.id]);
+    if(currentRole==='admin') (profiles||[]).forEach(p=>allowed.add(p.id));
+    else {
+      const visible=[...(profiles||[]),{...profile,id:user.id}];
+      let changed=true;
+      while(changed){
+        changed=false;
+        for(const p of visible){
+          if(allowed.has(p.id))continue;
+          const isTeamLeaderMember=currentRole==='team_leader'&&p.team_leader_id===user.id;
+          const reportsToVisible=currentRole==='manager'&&(allowed.has(p.manager_id)||allowed.has(p.team_leader_id));
+          if(isTeamLeaderMember||reportsToVisible){allowed.add(p.id);changed=true;}
+        }
+      }
+    }
+    accessibleOwnerIds=allowed;
     // Load the first page immediately; fetch additional pages only when needed.
     // This avoids a slow unbounded response while preserving every visible CRM record.
     const pageSize=1000;
