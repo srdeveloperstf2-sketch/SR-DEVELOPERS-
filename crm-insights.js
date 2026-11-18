@@ -1,6 +1,8 @@
 (() => {
   'use strict';
   const $ = id => document.getElementById(id);
+  // Prevent duplicate panels if the script is evaluated more than once.
+  if (document.getElementById('srInsights')) return;
   const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const db = () => window.srDb || {};
   const profile = () => window.srCurrentProfile || {};
@@ -22,7 +24,7 @@
   root.className = 'panel';
   root.innerHTML = `
     <style>
-      #srInsights{margin-top:16px}#srInsights .ins-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:10px;margin:12px 0}
+      #srInsights{margin-top:16px}#srInsights .ins-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:10px;margin:12px 0}
       #srInsights .ins-card{background:#f6faf7;border:1px solid #dce9e0;border-radius:13px;padding:13px;min-width:0}
       #srInsights .ins-card small{display:block;color:#66786d;font-size:12px}#srInsights .ins-card strong{font-size:23px;color:#145c3b}
       #srInsights .ins-scroll{overflow:auto}#srInsights table{width:100%;border-collapse:collapse;font-size:12px;min-width:620px}
