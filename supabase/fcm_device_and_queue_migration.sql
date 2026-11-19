@@ -42,7 +42,7 @@ begin
   insert into public.crm_push_jobs(recipient_id,title,body,data)
   values(new.recipient_id,
    coalesce(nullif(new.title,''),'S.R. Developers CRM'),
-   left(coalesce(nullif(new.message,''),nullif(new.body,''),'CRM में नया अपडेट'),500),
+   left(coalesce(new.customer_name,'CRM में नया अपडेट') || case when coalesce(new.customer_phone,'')<>'' then ' · '||new.customer_phone else '' || case when coalesce(new.project_name,'')<>'' then ' · '||new.project_name else '' end,500),
    jsonb_build_object('notification_id',new.id,'event_type',new.event_type));
  end if;
  return new;
