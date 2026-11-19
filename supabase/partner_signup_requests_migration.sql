@@ -5,7 +5,7 @@ begin;
 create table if not exists public.partner_signup_requests (
   id uuid primary key default gen_random_uuid(),
   full_name text not null check (char_length(trim(full_name)) between 2 and 100),
-  email text not null check (email ~* '^[A-Z0-9._%+-]+@[A-Z0-9.-]+\\.[A-Z]{2,}$'),
+  email text not null check (email ~* '^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$'),
   phone text not null check (char_length(trim(phone)) >= 8),
   partner_type text not null check (partner_type in ('Individual Broker','Channel Partner Agency','Firm Associate')),
   firm_name text,
@@ -29,7 +29,7 @@ create policy partner_signup_public_submit_strict on public.partner_signup_reque
   for insert to anon, authenticated
   with check (status='pending' and reviewed_by is null and reviewed_at is null
     and char_length(trim(full_name)) between 2 and 100
-    and email ~* '^[A-Z0-9._%+-]+@[A-Z0-9.-]+\\.[A-Z]{2,}$'
+    and email ~* '^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$'
     and char_length(trim(phone)) >= 8
     and partner_type in ('Individual Broker','Channel Partner Agency','Firm Associate'));
 drop policy if exists partner_signup_admin_read on public.partner_signup_requests;
