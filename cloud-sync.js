@@ -3,7 +3,7 @@
   const reverse=Object.fromEntries(Object.entries(types).map(([k,v])=>[v,k]));
   let client=null,user=null,profile=null,ready=false,queue=Promise.resolve(),profileByName=new Map(),accessibleOwnerIds=new Set();
   const uuid=()=>crypto.randomUUID();
-  function safeCacheSave(db){try{localStorage.setItem('srcrm_v11',JSON.stringify(db));return true;}catch(err){console.warn('CRM local cache save failed; cloud remains primary:',err);window.dispatchEvent(new CustomEvent('sr-local-storage-full'));return false;}}catch(err){console.warn('CRM local cache save failed; cloud remains primary:',err);window.dispatchEvent(new CustomEvent('sr-local-storage-full'));return false;}}
+  function safeCacheSave(db){try{localStorage.setItem('srcrm_v11',JSON.stringify(db));return true;}catch(err){console.warn('CRM local cache save failed; cloud remains primary:',err);window.dispatchEvent(new CustomEvent('sr-local-storage-full'));return false;}}
   const normalize=(item)=>({...item,id:item.id||uuid()});
   function ownerFor(key,item,db){
     const byName=name=>profileByName.get(String(name||'').trim().toLowerCase());
