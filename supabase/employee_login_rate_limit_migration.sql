@@ -1,6 +1,6 @@
 -- S.R. Developers CRM: durable login attempt throttle
 -- Apply in Supabase SQL Editor before deploying the updated login Edge Function.
--- Rate limit: 10 attempts per hashed identifier + IP in a rolling 15-minute window.
+-- Rate limit: 10 attempts per hashed normalized identifier in a 15-minute window (identifier-only; not IP-based).
 create table if not exists public.employee_login_rate_limits (
   key_hash text primary key check (key_hash ~ '^[a-f0-9]{64}$'),
   window_started_at timestamptz not null default now(),
