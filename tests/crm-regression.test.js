@@ -56,3 +56,13 @@ test('Android workflow validates code, Firebase config and artifact', () => {
   assert.match(workflow, /assembleDebug/);
   assert.match(workflow, /actions\/upload-artifact@v4/);
 });
+
+test('Supabase live preflight report is read-only and checks critical backend gates', () => {
+  const preflight = read('supabase/live_preflight_readonly.sql');
+  assert.match(preflight, /READ-ONLY/);
+  assert.match(preflight, /push_device_tokens/);
+  assert.match(preflight, /crm_push_jobs/);
+  assert.match(preflight, /Duplicate active plot\/unit bookings/);
+  assert.match(preflight, /FCM cron schedule/);
+  assert.match(preflight, /Security helper public/);
+});
