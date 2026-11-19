@@ -184,3 +184,48 @@ where status='pending'
 group by lower(email)
 having count(*) > 1;
 ```
+
+
+## Final verification checkpoint — 2026-11-19
+
+### CI evidence
+- Latest website workflow at checkpoint: Pages #421 — success, commit `fb6e37b8`.
+- Latest Android APK workflow at checkpoint: Android #306 — success, commit `fb6e37b8`.
+- These establish CI packaging/deployment only, not live Supabase or device behavior.
+
+### FCM source audit result
+- Reviewed repository `package.json`, `app.js`, `notifications.js`, `sw.js`, `auth.js`, `cloud-sync.js`, and `index.html`.
+- No Firebase/FCM SDK dependency, device-token registration flow, server delivery endpoint, or FCM server-secret configuration is present in the inspected code path.
+- Existing `app.js` local reminder scheduling uses Capacitor Local Notifications; `notifications.js` reads admin notification rows and subscribes to Supabase Realtime. These are NOT background OS push delivery when the app is closed.
+- FCM implementation must not be marked complete until Android Firebase registration/configuration, token persistence/refresh/cleanup, authenticated server delivery (Firebase Admin/HTTP v1 using secrets), event wiring, failure handling, and physical-device force-close tests are completed. Avoid committing service-account keys.
+
+### Role-based acceptance test matrix — required evidence before release
+| Role | Verify allowed | Verify denied |
+| Admin | staff control, reports, all approved CRM administration | self-disable; unauthorized cross-service action |
+| Manager | assigned/team scoped CRM, team reports, approvals as permitted | unrelated team/partner records |
+| Team Leader | own team leads/followups/attendance workflows | other team scope and admin-only controls |
+| Sales Executive | own/assigned leads, followups, site visits | staff control, unrelated leads, other team data |
+| Partner | own partner profile/leads/approved access | internal staff data, other partners' leads, admin functions |
+
+Record for each: test account role/profile, timestamp, screen/action, expected, actual, result, and sanitized evidence (no passwords/tokens).
+
+### Live environment/device verification — NOT run from repository-only access
+- Supabase production backup/PITR confirmation and read-only schema/policy preflight.
+- Apply login rate-limit SQL, reconcile canonical partner migration against live schema, apply/review inactive-staff RLS and storage policies, deploy verified Edge Function changes.
+- Disable a staff test user and test their existing session against RLS tables, Edge Functions, Realtime and Storage; reactivate and require new password.
+- Execute 10-attempt login throttle test and formatting-variant test; verify fail-closed RPC behavior.
+- Install latest APK on physical Android device; test login, cloud sync, local reminder permission denial/grant, app force-close reminder behavior.
+- FCM: force-close app and test push for at least one event, verify delivery, tap navigation, token refresh/revocation, and invalid-token cleanup.
+- Execute role matrix above with real test accounts and isolated test data.
+- Regression-test Leads, Follow-ups, Site Visits, Bookings, Payments, Attendance, Partner signup/approval, reports and notifications.
+
+### Release gate status
+- Source audit and source changes: progressing/completed for the reviewed patches; do not infer production security verification from source alone.
+- Website CI: PASS (#421 at commit fb6e37b8).
+- Android CI APK: PASS (#306 at commit fb6e37b8).
+- FCM background push: BLOCKED (not implemented/configured/physical-device verified).
+- Production SQL migrations: BLOCKED (no production database access/apply evidence).
+- Inactive old-session tests: BLOCKED (requires real live session/device).
+- Role matrix: BLOCKED (requires dedicated live test accounts).
+- Physical Android regression: BLOCKED (device test not recorded).
+- Production security verified: NO — release gate remains open.
