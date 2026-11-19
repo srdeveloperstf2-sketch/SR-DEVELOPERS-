@@ -48,6 +48,14 @@ order by tablename, policyname;
 4. Review and apply the updated `project_media_storage_migration.sql` storage mutation policies (commit 84d8fad2). Verify the bucket remains public-read intentionally, while upload/update/delete require `public.current_role() is not null`. This migration upserts bucket configuration and replaces its named storage policies; inspect existing storage policies before running it.
 5. Do not rerun seed/setup scripts. If any policy names differ from live, stop and reconcile rather than blindly dropping/recreating.
 
+## Webhook secret migration (TimelinesAI)
+- `timelinesai-webhook` now accepts the secret only via the `x-webhook-secret` request header; URL query `?secret=` is no longer accepted to prevent credential leakage into logs/history.
+- Update the TimelinesAI webhook configuration to send `x-webhook-secret: <same WHATSAPP_WEBHOOK_SECRET>` before deploying this function. If the integration cannot set custom headers, do not deploy this breaking change yet; use a secure gateway/header injection instead. Never place the secret in the webhook URL.
+
+## Account creation and login security notes
+- `create-staff-login` now paginates Auth users (up to 100 pages × 1,000) before duplicate-email handling; it fails closed if the safe scan limit is reached. Temporary 6-digit codes use rejection sampling to avoid modulo bias; the short format is retained for compatibility, so rely on Supabase Auth throttling and reset temporary passwords promptly.
+- `login-with-employee-code` checks an active CRM profile before password verification and delegates password checking/session creation to Supabase Auth. Confirm Auth rate-limit settings in the live project and test employee-code/mobile/email login, inactive profiles, invalid credentials, and repeated failures.
+
 ## Edge Function deployment
 Deploy `admin-toggle-staff-status` and `admin-reset-staff-password` only after verifying function source, environment and project:
 ```bash
