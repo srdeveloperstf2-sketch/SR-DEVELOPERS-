@@ -84,6 +84,10 @@
       if(patch.team_leader_id&&!profiles.some(p=>p.id===patch.team_leader_id&&p.role==='team_leader'&&p.is_active)){status('चुना हुआ Team Leader सक्रिय Team Leader नहीं है।',true);return;}
       if(!patch.manager_id&&!patch.team_leader_id){status('Sales Executive के लिए Manager या Team Leader चुनना जरूरी है।',true);return;}
     }
+    if(patch.manager_id&&patch.team_leader_id){
+      const selectedLeader=profiles.find(p=>p.id===patch.team_leader_id);
+      if(selectedLeader&&selectedLeader.manager_id&&selectedLeader.manager_id!==patch.manager_id){status('Sales Executive का Manager और Team Leader एक ही reporting hierarchy में होने चाहिए। पहले Team Leader का Manager मिलाएँ।',true);return;}
+    }
     if(patch.manager_id===id||patch.team_leader_id===id){status('कर्मचारी स्वयं अपना Manager / Team Leader नहीं हो सकता।',true);return;}
     // Reject reporting cycles: the selected supervisor cannot be inside this employee's reporting subtree.
     const descendants=new Set(), stack=[id];
