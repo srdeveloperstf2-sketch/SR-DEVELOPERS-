@@ -4,7 +4,7 @@ create temporary table srcrm_preflight_report (
   check_name text not null,
   status text not null,
   detail text not null
-) on commit drop;
+);
 
 do $preflight$
 declare
@@ -48,10 +48,12 @@ begin
     missing:=array(select unnest(array['id','record_type','payload','owner_id','created_by','updated_at']) except select unnest(coalesce(cols,array[]::text[])));
     insert into srcrm_preflight_report values ('CRM cloud columns',case when coalesce(array_length(missing,1),0)=0 then 'PASS' else 'FAIL' end,
       case when coalesce(array_length(missing,1),0)=0 then 'Required sync columns present' else 'Missing: '||array_to_string(missing,', ') end);
-    execute $q$select count(*) from public.crm_records
+    execute $q$select count(*) from (
+      select lower(payload->>'project'),lower(payload->>'unit') from public.crm_records
       where record_type='booking'
       and coalesce(lower(payload->>'status'),'') not in ('cancelled','rejected','lost')
-      group by lower(payload->>'project'),lower(payload->>'unit') having count(*)>1$q$ into duplicate_booking_count;
+      group by lower(payload->>'project'),lower(payload->>'unit') having count(*)>1
+    ) duplicate_groups$q$ into duplicate_booking_count;
     insert into srcrm_preflight_report values ('Duplicate active plot/unit bookings',
       case when duplicate_booking_count=0 then 'PASS' else 'WARN' end,
       'Duplicate groups found: '||duplicate_booking_count::text);
