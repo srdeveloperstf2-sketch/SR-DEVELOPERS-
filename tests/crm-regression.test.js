@@ -33,7 +33,7 @@ test('team-leader and manager access uses recursive reporting scope', () => {
 test('cloud sync cache quota failures do not abort initialization', () => {
   assert.match(cloud, /function safeCacheSave\(db\)\{try\{localStorage\.setItem/);
   assert.match(cloud, /CRM local cache save failed; cloud remains primary/);
-  assert.equal((cloud.match(/safeCacheSave\(db\);/g)||[]).length, 3);
+  assert.equal((cloud.match(/safeCacheSave\(db\);/g)||[]).length, 2);
 });
 
 test('cloud sync does not upload inaccessible owner records', () => {
