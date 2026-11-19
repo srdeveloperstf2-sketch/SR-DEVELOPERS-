@@ -167,7 +167,7 @@
       await loadVisibleTeamProfiles();
       if(isAdminProfile(data)) await initStaffAdmin();
       setState('Cloud sync जुड़ा है · '+sync.loaded+' जरूरी रिकॉर्ड तुरंत लोड · '+(sync.backgroundLoading?'बाकी डेटा background में लोड हो रहा है':'सभी रिकॉर्ड लोड')+' · '+sync.uploaded+' अपलोड'+(sync.skippedLocal?' · '+sync.skippedLocal+' दूसरे Staff के Local रिकॉर्ड सुरक्षा के कारण रोके गए':''));
-      window.dispatchEvent(new CustomEvent('sr-auth-ready',{detail:window.srCurrentProfile}));
+      // showApp already emitted sr-auth-ready once; do not trigger native plugins twice.
     } catch(syncError) {
       showGate();
       setState('Cloud Sync शुरू नहीं हुआ: '+(syncError?.message||String(syncError))+' — Admin से संपर्क करें।',true);
@@ -384,7 +384,14 @@
       if(isEmployeeCode||isMobile){
         if(!password) throw new Error('6 अंकों का Password लिखें।');
         const {data,error}=await client.functions.invoke('login-with-employee-code',{body:{identifier,password}});
-        if(error) throw new Error(error.message||'Employee ID / Mobile Login सेवा उपलब्ध नहीं है।');
+        if(error){
+          const status=error.context?.status;
+          const detail=error.context?.error||error.message||'Login function unavailable';
+          if(status===404) throw new Error('Employee Login service deploy नहीं है (404)। Supabase Edge Function login-with-employee-code deploy करें।');
+          if(status===401||status===400) throw new Error('Employee ID / Mobile या Password गलत है।');
+          if(status===429) throw new Error('बहुत अधिक Login प्रयास। 15 मिनट बाद प्रयास करें।');
+          throw new Error('Employee Login service error ('+(status||'network')+'): '+detail);
+        }
         if(data?.error) throw new Error(data.error);
         if(!data?.access_token||!data?.refresh_token) throw new Error('Login Session प्राप्त नहीं हुआ।');
         const {data:sessionData,error:sessionError}=await client.auth.setSession({access_token:data.access_token,refresh_token:data.refresh_token});
