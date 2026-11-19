@@ -47,14 +47,25 @@ create policy attendance_update_scope on public.attendance for update to authent
 using (public.current_role() is not null and (public.is_admin() or user_id=auth.uid()))
 with check (public.current_role() is not null and (public.is_admin() or user_id=auth.uid()));
 
--- Targets and team messages: deny inactive-profile self shortcuts.
+-- Targets: split policies so an authorized manager can update a target created
+-- by another manager/Admin without the INSERT-only created_by constraint.
 drop policy if exists targets_scope on public.targets;
-create policy targets_scope on public.targets for all to authenticated
+drop policy if exists targets_read_scope on public.targets;
+drop policy if exists targets_insert_scope on public.targets;
+drop policy if exists targets_update_scope on public.targets;
+drop policy if exists targets_delete_admin on public.targets;
+create policy targets_read_scope on public.targets for select to authenticated
 using (public.current_role() is not null and (
   public.is_admin() or user_id=auth.uid() or public.can_access_profile(user_id)
-))
-with check (public.current_role() is not null and created_by=auth.uid()
-  and public.current_role() in ('admin','manager','team_leader'));
+));
+create policy targets_insert_scope on public.targets for insert to authenticated
+with check (public.current_role() in ('admin','manager','team_leader')
+  and created_by=auth.uid() and public.can_access_profile(user_id));
+create policy targets_update_scope on public.targets for update to authenticated
+using (public.current_role() in ('admin','manager','team_leader') and public.can_access_profile(user_id))
+with check (public.current_role() in ('admin','manager','team_leader') and public.can_access_profile(user_id));
+create policy targets_delete_admin on public.targets for delete to authenticated
+using (public.is_admin());
 
 drop policy if exists messages_read on public.team_messages;
 create policy messages_read on public.team_messages for select to authenticated
