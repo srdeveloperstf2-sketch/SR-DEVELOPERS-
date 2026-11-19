@@ -49,10 +49,17 @@ function getServerSecret(): string | null {
 }
 
 function temporaryPassword(): string {
-  const bytes = new Uint8Array(4);
-  crypto.getRandomValues(bytes);
-  const value = new DataView(bytes.buffer).getUint32(0, false) % 1000000;
-  return String(value).padStart(6, "0");
+  // Rejection sampling avoids modulo bias while retaining the 6-digit temporary
+  // password format expected by the app. Supabase Auth still enforces throttling.
+  const range = 0x100000000;
+  const limit = Math.floor(range / 1000000) * 1000000;
+  let value: number;
+  do {
+    const bytes = new Uint32Array(1);
+    crypto.getRandomValues(bytes);
+    value = bytes[0];
+  } while (value >= limit);
+  return String(value % 1000000).padStart(6, "0");
 }
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -195,12 +202,19 @@ Deno.serve(async (req: Request) => {
 
     // Reuse an existing Auth identity only when it has no CRM profile.
     // Never overwrite or convert an existing Admin/staff profile.
-    const { data: authUsers, error: listUsersError } = await admin.auth.admin.listUsers({ page: 1, perPage: 1000 });
-    if (listUsersError) {
-      console.error("Auth email lookup failed", listUsersError.message);
-      return json(req, { error: "Could not check existing Login account" }, 500);
+    // Search all Auth-user pages so duplicate-email detection cannot silently miss
+    // accounts beyond the first 1,000 users.
+    let existingAuthUser: { id: string; email?: string } | undefined;
+    for (let page = 1; page <= 100; page++) {
+      const { data: authUsers, error: listUsersError } = await admin.auth.admin.listUsers({ page, perPage: 1000 });
+      if (listUsersError) {
+        console.error("Auth email lookup failed", listUsersError.message);
+        return json(req, { error: "Could not check existing Login account" }, 500);
+      }
+      existingAuthUser = authUsers.users.find((u) => (u.email ?? "").toLowerCase() === email);
+      if (existingAuthUser || authUsers.users.length < 1000) break;
+      if (page === 100) return json(req, { error: "Auth account list exceeds safe lookup limit; account creation blocked" }, 503);
     }
-    const existingAuthUser = authUsers.users.find((u) => (u.email ?? "").toLowerCase() === email);
     let accountId: string;
     if (existingAuthUser) {
       const { data: existingProfile, error: existingProfileError } = await admin
