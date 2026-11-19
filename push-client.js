@@ -24,6 +24,8 @@
  }
  async function register(){
   if(!native||registering)return;
+  // Do not invoke the native Firebase plugin in builds that have no matching google-services.json.
+  if(window.SR_FCM_CONFIGURED!==true){ready=false;console.info("FCM disabled: Android Firebase configuration not packaged");return;}
   registering=true;
   try{
    const status=await native.checkPermissions();
