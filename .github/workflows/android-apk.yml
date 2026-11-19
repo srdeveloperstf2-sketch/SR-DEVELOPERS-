@@ -21,6 +21,7 @@ on:
       - 'manifest.webmanifest'
       - 'icon.svg'
       - 'push-client.js'
+      - 'sw.js'
       - 'package.json'
       - 'capacitor.config.ts'
       - '.github/workflows/android-apk.yml'
