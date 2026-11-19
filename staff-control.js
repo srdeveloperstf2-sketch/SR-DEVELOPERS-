@@ -111,14 +111,25 @@
   async function toggleProfile(id,button){
     const p=profiles.find(x=>x.id===id);if(!p)return;
     if(id===me.id){status('आप अपना Admin Login यहाँ से बंद नहीं कर सकते।',true);return;}
+    if(p.role==='admin'){status('Admin Account को Staff Control से disable/enable नहीं किया जा सकता।',true);return;}
     const next=!p.is_active;
-    if(!confirm((next?'इस कर्मचारी का Login फिर से चालू':'इस कर्मचारी का Login बंद')+' करना चाहते हैं?'))return;
-    button.disabled=true;
-    const {error}=await client.from('profiles').update({is_active:next}).eq('id',id);
-    button.disabled=false;
-    if(error){status('Account status अपडेट नहीं हुआ: '+error.message,true);return;}
-    status(next?'कर्मचारी Profile सक्रिय कर दी गई।':'कर्मचारी Profile निष्क्रिय कर दी गई। अगली session verification पर ऐप Login रोक देगा।');
-    await refresh();
+    if(!confirm((next?'इस कर्मचारी का Login फिर से चालू':'इस कर्मचारी का Login बंद')+' करना चाहते हैं?'+(next?'\\nDeactivate होने पर password rotate हुआ था; नया password reset आवश्यक है.':'\\nDeactivate पर sign-in ban और password rotation लागू होगा.')))return;
+    button.disabled=true;button.textContent='Security update हो रहा है…';
+    try{
+      const {data:sessionData,error:sessionError}=await client.auth.getSession();
+      const session=sessionData?.session;
+      if(sessionError||!session?.access_token)throw new Error('Admin session verify नहीं हुआ। फिर से Login करें।');
+      const {data,error}=await client.functions.invoke('admin-toggle-staff-status',{
+        body:{targetId:id,isActive:next},
+        headers:{Authorization:'Bearer '+session.access_token}
+      });
+      if(error)throw new Error(error.message||'Security function request failed');
+      if(data?.error)throw new Error(data.error);
+      if(data?.success!==true)throw new Error(data?.warning||'Server से status confirmation नहीं मिला।');
+      status(next?'कर्मचारी सक्रिय। नया password reset कराना जरूरी है।':'कर्मचारी inactive, Auth ban और password rotation लागू। पुराने JWT expiry तक मान्य हो सकते हैं, लेकिन inactive-profile RLS access रोकता है।');
+      await refresh();
+    }catch(err){status('Account security status update नहीं हुआ: '+(err?.message||String(err)),true);}
+    finally{button.disabled=false;button.textContent='Status बदलें';}
   }
   function renderAttendance(){
     const own=attendance.filter(a=>a.user_id===me.id).sort((a,b)=>b.attendance_date.localeCompare(a.attendance_date));
