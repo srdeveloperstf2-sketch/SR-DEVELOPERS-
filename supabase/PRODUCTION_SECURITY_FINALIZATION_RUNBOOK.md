@@ -129,3 +129,30 @@ Supabase Auth bans and password rotation do not guarantee instant invalidation o
 ### Release gate
 - Website CI success does not mean Supabase migrations or Edge Functions are deployed. Android CI success does not prove install/runtime notification behavior.
 - Release remains blocked until migration apply/review, Edge Function deployment, policy conflict review, push setup/device test, and role matrix test (Admin, Manager, Team Leader, Sales Executive, Partner) are recorded with evidence.
+
+
+## Source audit continuation (2026-11-19)
+
+### Reviewed source guards
+- `current_role()` returns a role only when the profile is active. Inactive staff RLS policies and the updated CRM/attendance/targets/messages/leave guards use this helper or explicit active checks; this is source-reviewed, not live-policy-tested.
+- `admin-toggle-staff-status`: verifies active Admin; prevents self-disable and Admin targets; bans Auth before profile deactivation, rotates password, and keeps account banned/inactive if rotation errors; reactivation requires new password reset. Existing JWTs are not immediately revoked, so all server/non-RLS endpoints and realtime/storage paths still need runtime testing.
+- `admin-reset-staff-password`: active Admin only; refuses Admin and inactive targets. 
+- `create-staff-login`: active Admin authorization, allowed roles list, duplicate email scan paginated with fail-closed page limit; temporary password generator uses rejection sampling.
+- `create-partner-login`: active Admin authorization, partner record/status checks, prevents second login on same partner, rolls back newly created Auth user if partner linking fails. Email uniqueness is still enforced by Auth; test duplicate email and race conditions live.
+- Login rate-limit keys now normalize employee codes to uppercase and phone identifiers to canonical +91 mobile form before SHA-256 hashing, so formatted mobile variations share a throttle key. RPC/migration is still not applied in production.
+
+### Remaining critical gaps / blockers
+- Public staff/partner registration inserts are allowed by RLS; form validation and pending approval reduce account privilege risk but do not stop spam/flood. Robust anti-abuse (Captcha/Turnstile or rate-limited server endpoint) is not implemented. Do not make public signup unrestricted account creation.
+- Background push (FCM) has no verified token-registration, server delivery, credentials/secrets, retry, or device testing in the repository's reviewed path. This cannot be marked completed without Firebase project configuration and secure secrets.
+- Notification migrations create in-app/Admin activity records; they are not proof of OS push delivery while the app is closed.
+- Two partner signup migration files exist (`partner_signup_migration.sql`, `partner_signup_requests_migration.sql`) with different table constraints. Review actual live schema and choose/reconcile before applying; do not blindly run both.
+- Production Supabase migrations, deployed Edge Functions, webhook header migration, storage policy conflict review, Realtime tests, and role matrix tests are pending.
+
+### Release tests required
+1. Disable test staff; attempt fresh login and use pre-existing session against all protected tables, RPC/Edge Functions, storage mutations, realtime.
+2. Reactivate and verify login requires newly issued password.
+3. Create staff/partner with existing email, concurrent duplicate request, unauthorized role, inactive Admin token, malformed inputs.
+4. Test 10 failed/attempts in 15 minutes with employee-code and phone formatting variants; verify RPC and 429 behavior, 503 fail-closed when RPC unavailable.
+5. Test follow-up/site visit native alarm after force-close; permission denied; Android exact-alarm setting.
+6. Test leave request/approval/rejection in-app notifications, and separately verify FCM push once configured.
+7. Test Admin, Manager, Team Leader, Sales Executive, Partner accounts for cross-team/partner isolation and CRUD scopes.
