@@ -25,6 +25,8 @@ Deno.serve(async req=>{
  let sa:any;try{sa=JSON.parse(raw)}catch{return reply({error:"Invalid Firebase service-account JSON"},503)}
  if(!sa.project_id||!sa.client_email||!sa.private_key)return reply({error:"Service-account fields missing"},503);
  const db=createClient(url,sr);
+ // Requeue stale claims after worker crash/timeout; cron should be configured to avoid overlapping dispatch runs.
+ await db.from("crm_push_jobs").update({status:"failed",last_error:"Recovered stale processing job",next_attempt_at:new Date().toISOString()}).eq("status","processing").lt("claimed_at",new Date(Date.now()-15*60*1000).toISOString());
  const {data:jobs,error}=await db.from("crm_push_jobs").select("*").in("status",["pending","failed"]).lte("next_attempt_at",new Date().toISOString()).lt("attempts",8).order("created_at").limit(50);
  if(error)return reply({error:"Queue read failed"},500);
  if(!jobs?.length)return reply({processed:0});
@@ -32,7 +34,7 @@ Deno.serve(async req=>{
  let sent=0,failed=0,invalid=0;
  for(const job of jobs){
   // Claim each row atomically via conditional update to reduce concurrent duplicate sends.
-  const {data:claim}=await db.from("crm_push_jobs").update({status:"processing",attempts:job.attempts+1}).eq("id",job.id).in("status",["pending","failed"]).select("id").maybeSingle();
+  const {data:claim}=await db.from("crm_push_jobs").update({status:"processing",attempts:job.attempts+1,claimed_at:new Date().toISOString()}).eq("id",job.id).in("status",["pending","failed"]).select("id").maybeSingle();
   if(!claim)continue;
   const {data:devices}=await db.from("push_device_tokens").select("id,token").eq("user_id",job.recipient_id).is("revoked_at",null);
   if(!devices?.length){await db.from("crm_push_jobs").update({status:"failed",last_error:"No active device token",next_attempt_at:new Date(Date.now()+3600000).toISOString()}).eq("id",job.id);failed++;continue}
