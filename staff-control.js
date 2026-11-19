@@ -70,10 +70,33 @@
   async function saveProfile(id,button){
     const fields=[...$('scTeamList').querySelectorAll('[data-id="'+id+'"]')];
     const patch={};fields.forEach(el=>patch[el.dataset.field]=el.value||null);
-    if(patch.role==='admin'&&id!==me.id){if(!confirm('इस कर्मचारी को Admin अधिकार देना चाहते हैं? Admin को कंपनी के सभी रिकॉर्ड दिख सकते हैं।'))return;}
+    const current=profiles.find(p=>p.id===id);
+    if(!current){status('कर्मचारी रिकॉर्ड नहीं मिला। Refresh करके दोबारा प्रयास करें।',true);return;}
+    if(id===me.id&&patch.role!=='admin'){status('अपने Admin अधिकार स्वयं कम नहीं कर सकते।',true);return;}
+    if(patch.role==='admin'&&id!==me.id&&!confirm('इस कर्मचारी को Admin अधिकार देना चाहते हैं? Admin को कंपनी के सभी रिकॉर्ड दिख सकते हैं।'))return;
     if(patch.role==='manager'){patch.manager_id=null;patch.team_leader_id=null;}
-    if(patch.role==='team_leader')patch.team_leader_id=null;
+    if(patch.role==='team_leader'){
+      patch.team_leader_id=null;
+      if(patch.manager_id&&!profiles.some(p=>p.id===patch.manager_id&&p.role==='manager'&&p.is_active)){status('Team Leader का Reporting Manager केवल सक्रिय Manager हो सकता है।',true);return;}
+    }
+    if(patch.role==='sales_executive'){
+      if(patch.manager_id&&!profiles.some(p=>p.id===patch.manager_id&&p.role==='manager'&&p.is_active)){status('चुना हुआ Manager सक्रिय Manager नहीं है।',true);return;}
+      if(patch.team_leader_id&&!profiles.some(p=>p.id===patch.team_leader_id&&p.role==='team_leader'&&p.is_active)){status('चुना हुआ Team Leader सक्रिय Team Leader नहीं है।',true);return;}
+      if(!patch.manager_id&&!patch.team_leader_id){status('Sales Executive के लिए Manager या Team Leader चुनना जरूरी है।',true);return;}
+    }
     if(patch.manager_id===id||patch.team_leader_id===id){status('कर्मचारी स्वयं अपना Manager / Team Leader नहीं हो सकता।',true);return;}
+    // Reject reporting cycles: the selected supervisor cannot be inside this employee's reporting subtree.
+    const descendants=new Set(), stack=[id];
+    while(stack.length){
+      const parent=stack.pop();
+      for(const child of profiles){
+        if((child.manager_id===parent||child.team_leader_id===parent)&&!descendants.has(child.id)){
+          descendants.add(child.id);stack.push(child.id);
+        }
+      }
+    }
+    if(patch.manager_id&&descendants.has(patch.manager_id)){status('Reporting cycle रोक दी गई: इस Manager को चुनने से hierarchy cycle बनती है।',true);return;}
+    if(patch.team_leader_id&&descendants.has(patch.team_leader_id)){status('Reporting cycle रोक दी गई: इस Team Leader को चुनने से hierarchy cycle बनती है।',true);return;}
     button.disabled=true;
     const {error}=await client.from('profiles').update(patch).eq('id',id);
     button.disabled=false;
