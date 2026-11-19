@@ -11,6 +11,9 @@ on:
       - 'styles.css'
       - 'staff-control.css'
       - 'supabase/config.js'
+      - 'assets/**'
+      - 'capacitor.config.json'
+      - 'capacitor.config.ts'
       - '.github/workflows/android-signed-release.yml'
 
 permissions:
@@ -50,9 +53,9 @@ jobs:
 
       - name: Prepare web assets
         run: |
-          mkdir -p www
+          mkdir -p www/assets www/supabase
           cp index.html partner.html styles.css staff-control.css staff-control.js app.js emi.js auth.js notifications.js crm-insights.js partner.js partner-admin.js cloud-sync.js push-client.js manifest.webmanifest icon.svg sw.js www/
-          mkdir -p www/supabase
+          cp assets/sr-developers-logo.svg www/assets/
           cp supabase/config.js www/supabase/config.js
 
       - name: Create Android project
