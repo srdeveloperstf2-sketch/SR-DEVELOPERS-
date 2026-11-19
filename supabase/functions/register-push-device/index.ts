@@ -12,10 +12,17 @@ Deno.serve(async req=>{
  if(userErr||!user)return reply({error:"Unauthorized"},401);
  const body=await req.json().catch(()=>null);
  const token=typeof body?.token==="string"?body.token.trim():"";
- const platform=body?.platform;
- if(token.length<40||token.length>4096||!["android","ios"].includes(platform))return reply({error:"Invalid token/platform"},400);
+ const action=body?.action==="revoke"?"revoke":"register";
+ if(token.length<40||token.length>4096)return reply({error:"Invalid token"},400);
  const admin=createClient(url,sr);
+ if(action==="revoke"){
+  const {error}=await admin.from("push_device_tokens").update({revoked_at:new Date().toISOString()}).eq("user_id",user.id).eq("token",token).is("revoked_at",null);
+  if(error)return reply({error:"Token revocation failed"},500);
+  return reply({ok:true,action:"revoke"});
+ }
+ const platform=body?.platform;
+ if(!["android","ios"].includes(platform))return reply({error:"Invalid platform"},400);
  const {error}=await admin.from("push_device_tokens").upsert({user_id:user.id,token,platform,device_label:typeof body?.label==="string"?body.label.slice(0,80):null,last_seen_at:new Date().toISOString(),revoked_at:null},{onConflict:"token"});
  if(error)return reply({error:"Token registration failed"},500);
- return reply({ok:true});
+ return reply({ok:true,action:"register"});
 });
