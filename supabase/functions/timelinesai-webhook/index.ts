@@ -33,7 +33,14 @@ Deno.serve(async (req: Request) => {
   if (req.method !== "POST") return Response.json({ error: "POST required" }, { status: 405, headers: corsHeaders });
 
   const expected = Deno.env.get("WHATSAPP_WEBHOOK_SECRET");
-  const supplied = req.headers.get("x-webhook-secret");
+  const headerSecret = req.headers.get("x-webhook-secret");
+  const legacyQuerySecret = new URL(req.url).searchParams.get("secret");
+  // Transition-safe: prefer header authentication; temporarily accept legacy URL
+  // query only so webhook provider configuration can be migrated without outage.
+  const supplied = headerSecret || legacyQuerySecret;
+  if (!headerSecret && legacyQuerySecret) {
+    console.warn("timelinesai-webhook: legacy query-secret auth used; migrate provider to x-webhook-secret header");
+  }
   const expectedBytes = expected ? await crypto.subtle.digest("SHA-256", new TextEncoder().encode(expected)) : null;
   const suppliedBytes = supplied ? await crypto.subtle.digest("SHA-256", new TextEncoder().encode(supplied)) : null;
   let secretMatches = !!expectedBytes && !!suppliedBytes;
