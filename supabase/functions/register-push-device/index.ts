@@ -15,6 +15,8 @@ Deno.serve(async req=>{
  const action=body?.action==="revoke"?"revoke":"register";
  if(token.length<40||token.length>4096)return reply({error:"Invalid token"},400);
  const admin=createClient(url,sr);
+ const {data:profile,error:profileError}=await admin.from("profiles").select("is_active").eq("id",user.id).maybeSingle();
+ if(profileError||!profile?.is_active)return reply({error:"Active CRM staff account required"},403);
  if(action==="revoke"){
   const {error}=await admin.from("push_device_tokens").update({revoked_at:new Date().toISOString()}).eq("user_id",user.id).eq("token",token).is("revoked_at",null);
   if(error)return reply({error:"Token revocation failed"},500);
