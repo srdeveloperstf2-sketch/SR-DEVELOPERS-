@@ -229,3 +229,45 @@ Record for each: test account role/profile, timestamp, screen/action, expected, 
 - Role matrix: BLOCKED (requires dedicated live test accounts).
 - Physical Android regression: BLOCKED (device test not recorded).
 - Production security verified: NO — release gate remains open.
+
+
+## FCM background push implementation — source checkpoint 2026-11-19
+FCM source has now been scaffolded; it is NOT production configured or device-verified.
+
+### Files added/updated
+- `push-client.js`: native Capacitor push permission, Android channel creation, token registration, event forwarding, logout token revocation.
+- `supabase/fcm_device_and_queue_migration.sql`: token table, durable job queue, admin notification insert trigger.
+- `supabase/functions/register-push-device/index.ts`: validates the authenticated Supabase user and upserts/revokes only that user's device token via service role.
+- `supabase/functions/deliver-crm-push/index.ts`: cron-secret protected queue dispatcher, service-account OAuth JWT, FCM HTTP v1, bounded exponential retry, stale-job recovery and invalid-token cleanup.
+- `package.json`: adds `@capacitor/push-notifications` v7 line.
+- Android workflow copies/checks `push-client.js`; `index.html` loads it.
+- `supabase/config.toml`: registration JWT verification on; dispatcher JWT verification off because it uses its own cron secret.
+
+### Production prerequisites (do not paste secrets into Git/chat)
+1. Firebase Console: create/register Android app with package ID `in.srdevelopers.crm`; download `google-services.json` to the Android build environment only. Keep it out of public repo unless explicitly confirmed acceptable (Firebase client config is not service secret, but repo exposure should be reviewed).
+2. Firebase Cloud Messaging API enabled; create least-privilege service account and store its JSON as Supabase Edge Function secret `FCM_SERVICE_ACCOUNT_JSON`. This key is sensitive. Rotate if exposed.
+3. Set Supabase secrets: `FCM_SERVICE_ACCOUNT_JSON`, `PUSH_DISPATCH_SECRET` (strong random secret), and ensure service-role environment key is available to functions. Do not put service role keys or Firebase private keys in client config.
+4. Apply `fcm_device_and_queue_migration.sql` only after backup and SQL preflight. It depends on the existing `admin_notifications` table/columns.
+5. Deploy `register-push-device` and `deliver-crm-push` Edge Functions. Confirm `register-push-device` uses JWT verification and dispatcher `verify_jwt=false` plus `x-cron-secret`.
+6. Configure a non-overlapping scheduled POST to `/functions/v1/deliver-crm-push` every 1–2 minutes with `x-cron-secret`. Use Supabase Cron/pg_net or an external scheduler; schedule is not installed by this source patch.
+7. Rebuild/install Android APK after `google-services.json` is available in the build environment.
+
+### FCM test checklist
+- [ ] Firebase project and Android package ID match.
+- [ ] `google-services.json` included only in controlled build environment.
+- [ ] Push permission granted; Android notification channel `crm-push` created.
+- [ ] Register token; verify row exists for authenticated user (never copy token into logs/screenshots).
+- [ ] Logout revokes token; login re-registers.
+- [ ] Insert a test admin notification and confirm job is enqueued.
+- [ ] Dispatcher returns processed/sent counts; no service-account data in logs.
+- [ ] Physical phone receives notification with CRM app backgrounded and force-closed.
+- [ ] Tap notification opens/foregrounds app; record actual navigation behavior.
+- [ ] Token refresh, reinstall, invalid token cleanup, retry and duplicate-send behavior tested.
+- [ ] Test multiple devices for one account and disable/revoke device independently.
+
+### Implementation limitations / review items
+- Push event source currently mirrors `admin_notifications` inserts only; it is not a generalized CRM event fanout. Existing admin notification trigger sources currently include selected staff/signup/new-lead events.
+- The push client forwards notification events to `sr-push-received` and `sr-push-action`; app deep-link/navigation handling still needs product-specific implementation and verification.
+- Delivery queue currently attempts sends to all active devices for the recipient; successful delivery to any device marks the job sent. Provider acceptance is not proof of on-device display.
+- Dispatcher uses scheduled invocation, which must be configured outside the repository source.
+- SQL/function source and GitHub CI do not prove production migration/deploy, Firebase credentials, or physical device receipt.
