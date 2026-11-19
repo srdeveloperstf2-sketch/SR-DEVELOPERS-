@@ -19,6 +19,7 @@ on:
       - 'supabase/**'
       - 'manifest.webmanifest'
       - 'icon.svg'
+      - 'assets/**'
       - 'push-client.js'
       - 'sw.js'
       - 'package.json'
@@ -60,7 +61,8 @@ jobs:
         run: |
           mkdir -p www
           cp index.html partner.html styles.css staff-control.css staff-control.js app.js emi.js auth.js notifications.js push-client.js crm-insights.js partner.js partner-admin.js cloud-sync.js manifest.webmanifest icon.svg sw.js www/
-          mkdir -p www/supabase
+          mkdir -p www/assets www/supabase
+          cp assets/sr-developers-logo.svg www/assets/
           cp supabase/config.js www/supabase/config.js
       - name: Create Android project
         run: npx cap add android
