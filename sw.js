@@ -1,5 +1,5 @@
-const C='sr-crm-v45';
-const ASSETS=['./','./index.html','./styles.css','./staff-control.css','./staff-control.js','./partner-admin.js','./cloud-sync.js','./auth.js','./app.js','./emi.js','./manifest.webmanifest','./icon.svg','./assets/sr-developers-logo.svg','./notifications.js','./push-client.js','./crm-insights.js','./partner.js'];
+const C='sr-crm-v46';
+const ASSETS=['./','./index.html','./styles.css','./staff-control.css','./staff-control.js','./partner-admin.js','./cloud-sync.js','./auth.js','./app.js','./emi.js','./manifest.webmanifest','./icon.svg','./assets/sr-developers-logo.svg','./notifications.js','./fcm-config-status.js','./push-client.js','./crm-insights.js','./partner.js'];
 self.addEventListener('install',e=>e.waitUntil(caches.open(C).then(c=>c.addAll(ASSETS)).then(()=>self.skipWaiting())));
 self.addEventListener('activate',e=>e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==C).map(k=>caches.delete(k)))).then(()=>self.clients.claim())));
 self.addEventListener('fetch',e=>{
