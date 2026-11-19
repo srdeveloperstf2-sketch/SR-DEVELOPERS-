@@ -69,9 +69,10 @@ Deno.serve(async (req: Request) => {
     const admin = createClient(url, secret, { auth: { autoRefreshToken: false, persistSession: false } });
     const publicClient = createClient(url, anon, { auth: { autoRefreshToken: false, persistSession: false } });
 
+    const phoneVariants = mobile ? [mobile, mobile.slice(1), mobile.slice(2), digits, digits.length === 10 ? "91" + digits : ""].filter(Boolean) : [];
     const { data: profile, error: profileError } = isCode
-      ? await admin.from("profiles").select("id,is_active").eq("employee_code", code).maybeSingle()
-      : await admin.from("profiles").select("id,is_active").eq("phone", mobile).maybeSingle();
+      ? await admin.from("profiles").select("id,is_active").ilike("employee_code", code).maybeSingle()
+      : await admin.from("profiles").select("id,is_active").in("phone", phoneVariants).maybeSingle();
     if (profileError || !profile?.id || profile.is_active !== true) {
       return reply(req, { error: "Login ID / Mobile Number या Password सही नहीं है।" }, 401);
     }
