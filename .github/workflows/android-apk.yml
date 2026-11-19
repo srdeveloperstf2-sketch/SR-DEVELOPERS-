@@ -22,6 +22,7 @@ on:
       - 'assets/**'
       - 'push-client.js'
       - 'sw.js'
+      - 'tests/**'
       - 'package.json'
       - 'capacitor.config.ts'
       - 'capacitor.config.json'
