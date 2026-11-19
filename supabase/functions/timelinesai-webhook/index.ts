@@ -2,7 +2,7 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "content-type",
+  "Access-Control-Allow-Headers": "content-type, x-webhook-secret",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
   "Cache-Control": "no-store",
 };
@@ -33,9 +33,17 @@ Deno.serve(async (req: Request) => {
   if (req.method !== "POST") return Response.json({ error: "POST required" }, { status: 405, headers: corsHeaders });
 
   const expected = Deno.env.get("WHATSAPP_WEBHOOK_SECRET");
-  const supplied = new URL(req.url).searchParams.get("secret");
-  if (!expected || !supplied || supplied !== expected) {
-    console.warn("timelinesai-webhook: rejected request (secret mismatch)");
+  const supplied = req.headers.get("x-webhook-secret");
+  const expectedBytes = expected ? await crypto.subtle.digest("SHA-256", new TextEncoder().encode(expected)) : null;
+  const suppliedBytes = supplied ? await crypto.subtle.digest("SHA-256", new TextEncoder().encode(supplied)) : null;
+  let secretMatches = !!expectedBytes && !!suppliedBytes;
+  if (secretMatches) {
+    const a = new Uint8Array(expectedBytes!); const b = new Uint8Array(suppliedBytes!);
+    let diff = 0; for (let i = 0; i < a.length; i++) diff |= a[i] ^ b[i];
+    secretMatches = diff === 0;
+  }
+  if (!secretMatches) {
+    console.warn("timelinesai-webhook: rejected request (header secret mismatch)");
     return new Response("Not found", { status: 404, headers: corsHeaders });
   }
 
