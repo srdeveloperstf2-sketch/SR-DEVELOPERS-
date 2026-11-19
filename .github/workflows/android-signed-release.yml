@@ -64,7 +64,7 @@ jobs:
         run: |
           if [ -n "${GOOGLE_SERVICES_JSON_BASE64:-}" ]; then
             echo "$GOOGLE_SERVICES_JSON_BASE64" | base64 --decode > google-services.json
-            node -e "const fs=require('fs');const j=JSON.parse(fs.readFileSync('google-services.json','utf8'));if(!j.project_info?.project_id||!j.client?.length)process.exit(2);"
+            node -e "const fs=require('fs');const j=JSON.parse(fs.readFileSync('google-services.json','utf8'));if(!j.project_info?.project_id||!j.client?.some(c=>c.client_info?.android_client_info?.package_name==='in.srdevelopers.crm')){console.error('Firebase JSON does not match Android package in.srdevelopers.crm');process.exit(2)}"
             echo "Firebase Android config validated."
           else
             echo "::warning::Missing GOOGLE_SERVICES_JSON_BASE64 GitHub secret. APK can build, but FCM push registration will not work on Android until Firebase config is added."
@@ -72,13 +72,13 @@ jobs:
       - name: Create Android project
         run: npx cap add android
 
-      - name: Sync Android project
-        run: npx cap sync android
       - name: Copy Firebase config into Android app (when configured)
         run: |
           if [ -f google-services.json ]; then
             cp google-services.json android/app/google-services.json
           fi
+      - name: Sync Android project
+        run: npx cap sync android
 
       - name: Configure private release signing
         env:
@@ -127,7 +127,7 @@ jobs:
           GRADLE
           echo "Release signing configured. Keystore is kept in the runner's temporary directory."
 
-      - name: Build signed release APK
+      - name: Build signed release APK (retry transient Gradle failures)
         env:
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
@@ -135,7 +135,15 @@ jobs:
         run: |
           cd android
           chmod +x gradlew
-          ./gradlew assembleRelease
+          for attempt in 1 2 3; do
+            echo "Release Gradle build attempt $attempt/3"
+            if ./gradlew --no-daemon --stacktrace assembleRelease; then
+              exit 0
+            fi
+            if [ "$attempt" -lt 3 ]; then sleep 20; fi
+          done
+          echo "::error::Signed release build failed after 3 attempts."
+          exit 1
 
       - name: Verify APK signature
         run: |
