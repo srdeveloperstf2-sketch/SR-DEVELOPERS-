@@ -94,3 +94,13 @@ Supabase Auth bans and password rotation do not guarantee instant invalidation o
 - [ ] Role hierarchy and targets CRUD tests
 - [ ] Edge Function logs clean
 - [ ] Website + Android smoke tests
+
+
+## Reminder / notification permission verification (Android)
+
+- Follow-up and site-visit alarms use Capacitor Local Notifications on the Android wrapper. Verify notifications are enabled for the app under Android Settings > Apps > S.R. DEVELOPERS CRM > Notifications.
+- On Android 13+, grant notification permission when prompted. If the app reports permission denied, reminders remain saved in CRM but are not scheduled.
+- Check exact-alarm settings when reminders arrive late; exact-alarm access is device/version dependent and must be verified on the target phone.
+- Browser notifications are not equivalent to native scheduled alarms; browser fallback timers only work while the page remains alive and must not be treated as reliable background alarms.
+- Current Admin Activity notification UI uses realtime and periodic refresh while the app is running. Background push delivery to all staff, leave approval/rejection push, and call/booking notifications require a production push delivery design (e.g. FCM token registration, server-side event triggers, delivery retry/cleanup) and device testing; do not mark these as completed merely because the Admin notification table exists.
+- Test matrix: schedule a follow-up and site visit 10 minutes ahead, force-close app, verify alarm sound/vibration and notification action; deny permission and verify record saved but reminder blocked with clear instructions; test Android 13+ and one older Android device.
