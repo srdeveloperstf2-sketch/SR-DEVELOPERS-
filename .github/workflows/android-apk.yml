@@ -64,10 +64,26 @@ jobs:
           mkdir -p www/assets www/supabase
           cp assets/sr-developers-logo.svg www/assets/
           cp supabase/config.js www/supabase/config.js
+      - name: Configure Firebase for Android push (optional)
+        env:
+          GOOGLE_SERVICES_JSON_BASE64: ${{ secrets.GOOGLE_SERVICES_JSON_BASE64 }}
+        run: |
+          if [ -n "${GOOGLE_SERVICES_JSON_BASE64:-}" ]; then
+            echo "$GOOGLE_SERVICES_JSON_BASE64" | base64 --decode > google-services.json
+            node -e "const fs=require('fs');const j=JSON.parse(fs.readFileSync('google-services.json','utf8'));if(!j.project_info?.project_id||!j.client?.length)process.exit(2);"
+            echo "Firebase Android config validated."
+          else
+            echo "::warning::Missing GOOGLE_SERVICES_JSON_BASE64 GitHub secret. APK can build, but FCM push registration will not work on Android until Firebase config is added."
+          fi
       - name: Create Android project
         run: npx cap add android
       - name: Sync Android project
         run: npx cap sync android
+      - name: Copy Firebase config into Android app (when configured)
+        run: |
+          if [ -f google-services.json ]; then
+            cp google-services.json android/app/google-services.json
+          fi
       - name: Build debug APK (retry transient Maven/Gradle resolution failures)
         run: |
           cd android
