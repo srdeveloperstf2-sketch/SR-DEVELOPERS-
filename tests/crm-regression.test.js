@@ -82,3 +82,28 @@ test('Supabase Edge Function gateway auth config', () => {
   assert.match(cfg, /\[functions\.deliver-crm-push\]\s+verify_jwt = false/);
   assert.match(cfg, /\[functions\.register-push-device\]\s+verify_jwt = true/);
 });
+
+test('employee login accepts common stored phone formats', () => {
+  const loginFn = read('supabase/functions/login-with-employee-code/index.ts');
+  assert.match(loginFn, /const phoneVariants = mobile \? \[mobile, mobile\.slice\(1\), mobile\.slice\(2\), digits/);
+  assert.match(loginFn, /\.in\('phone', phoneVariants\)/);
+  assert.match(loginFn, /\.ilike\('employee_code', code\)/);
+});
+
+test('native push registration is disabled when Firebase config is absent', () => {
+  const push = read('push-client.js');
+  const html = read('index.html');
+  const workflow = read('.github/workflows/android-apk.yml');
+  assert.match(push, /SR_FCM_CONFIGURED!==true/);
+  assert.match(html, /fcm-config-status\.js/);
+  assert.match(workflow, /SR_FCM_CONFIGURED=true/);
+  assert.match(workflow, /SR_FCM_CONFIGURED=false/);
+});
+
+test('auth emits readiness once and native app skips service-worker registration', () => {
+  const authCode = read('auth.js');
+  const html = read('index.html');
+  assert.equal((authCode.match(/sr-auth-ready/g)||[]).length, 2); // one in showApp; one comment only
+  assert.match(html, /!window\.Capacitor\?\.isNativePlatform\?\./);
+  assert.match(read('sw.js'), /sr-crm-v46/);
+});
