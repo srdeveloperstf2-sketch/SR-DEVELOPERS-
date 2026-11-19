@@ -45,7 +45,8 @@ order by tablename, policyname;
 1. Confirm foundational migrations already applied: schema/ONE_TIME_SETUP, role_access_migration, app_cloud_sync_migration, staff_signup_migration, final_hardening_migration, staff_control_center_migration, and rls_team_scope_consistency_patch as applicable to the live schema.
 2. Apply `rls_inactive_staff_access_guard.sql`.
 3. Apply the current `rls_inactive_staff_extended_guard.sql` (includes separate targets read/insert/update/delete policies; commit 9fa285df).
-4. Do not rerun seed/setup scripts. If any policy names differ from live, stop and reconcile rather than blindly dropping/recreating.
+4. Review and apply the updated `project_media_storage_migration.sql` storage mutation policies (commit 84d8fad2). Verify the bucket remains public-read intentionally, while upload/update/delete require `public.current_role() is not null`. This migration upserts bucket configuration and replaces its named storage policies; inspect existing storage policies before running it.
+5. Do not rerun seed/setup scripts. If any policy names differ from live, stop and reconcile rather than blindly dropping/recreating.
 
 ## Edge Function deployment
 Deploy `admin-toggle-staff-status` and `admin-reset-staff-password` only after verifying function source, environment and project:
