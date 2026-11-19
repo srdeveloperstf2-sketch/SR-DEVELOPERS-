@@ -66,3 +66,13 @@ test('Supabase live preflight report is read-only and checks critical backend ga
   assert.match(preflight, /FCM cron schedule/);
   assert.match(preflight, /Security helper public/);
 });
+
+test('FCM cron setup uses Supabase Vault and schedules a single named job', () => {
+  const setupSql = read('supabase/fcm_cron_setup.sql');
+  assert.match(setupSql, /crm_project_url/);
+  assert.match(setupSql, /crm_push_dispatch_secret/);
+  assert.match(setupSql, /cron\.schedule/);
+  assert.match(setupSql, /deliver-crm-push/);
+  assert.match(setupSql, /net\.http_post/);
+  assert.match(setupSql, /Vault entries/);
+});
