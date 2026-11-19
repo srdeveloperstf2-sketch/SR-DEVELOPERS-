@@ -76,3 +76,9 @@ test('FCM cron setup uses Supabase Vault and schedules a single named job', () =
   assert.match(setupSql, /net\.http_post/);
   assert.match(setupSql, /Vault entries/);
 });
+
+test('Supabase Edge Function gateway auth config', () => {
+  const cfg = read('supabase/config.toml');
+  assert.match(cfg, /\[functions\.deliver-crm-push\]\s+verify_jwt = false/);
+  assert.match(cfg, /\[functions\.register-push-device\]\s+verify_jwt = true/);
+});
