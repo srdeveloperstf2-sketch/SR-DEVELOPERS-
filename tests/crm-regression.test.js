@@ -98,6 +98,7 @@ test('native push registration is disabled when Firebase config is absent', () =
   assert.match(html, /fcm-config-status\.js/);
   assert.match(workflow, /SR_FCM_CONFIGURED=true/);
   assert.match(workflow, /SR_FCM_CONFIGURED=false/);
+  assert.match(workflow, /cp www\/fcm-config-status\.js www\/fcm-config-status\.js/);
 });
 
 test('auth emits readiness once and native app skips service-worker registration', () => {
