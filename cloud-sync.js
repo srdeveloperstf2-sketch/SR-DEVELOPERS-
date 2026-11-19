@@ -3,6 +3,7 @@
   const reverse=Object.fromEntries(Object.entries(types).map(([k,v])=>[v,k]));
   let client=null,user=null,profile=null,ready=false,queue=Promise.resolve(),profileByName=new Map(),accessibleOwnerIds=new Set();
   const uuid=()=>crypto.randomUUID();
+  function safeCacheSave(db){try{safeCacheSave(db);return true;}catch(err){console.warn('CRM local cache save failed; cloud remains primary:',err);window.dispatchEvent(new CustomEvent('sr-local-storage-full'));return false;}}
   const normalize=(item)=>({...item,id:item.id||uuid()});
   function ownerFor(key,item,db){
     const byName=name=>profileByName.get(String(name||'').trim().toLowerCase());
@@ -167,7 +168,7 @@
       db[key]=keep;
     }
     db._restrictedCache=[...restored,...nextRestricted];
-    localStorage.setItem('srcrm_v11',JSON.stringify(db));
+    safeCacheSave(db);
     window.srCloudPersist=persist;window.srCloudDelete=deleteRecord;ready=true;window.srCloudReady=true;
     try{await flushDeletes()}catch(err){console.warn('Pending CRM deletes will retry:',err.message)}
     const loadedCount=data.length;
@@ -214,7 +215,7 @@
               else{dbIndex[key].set(row.id,db[key].length);db[key].push(payload);}
               totalAdded++;
             }
-            localStorage.setItem('srcrm_v11',JSON.stringify(db));
+            safeCacheSave(db);
             window.srRender?.();
             window.dispatchEvent(new CustomEvent('sr-cloud-progress',{detail:{loaded:loadedCount+totalAdded,totalAdded}}));
             if((page||[]).length<pageSize)break;
