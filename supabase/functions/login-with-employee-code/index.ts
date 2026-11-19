@@ -56,7 +56,7 @@ Deno.serve(async (req: Request) => {
     // Hash the key before sending it to the RPC; raw employee/mobile/IP is never stored.
     const forwarded = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "";
     const ip = forwarded || "unknown-ip";
-    const rateKeyBytes = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(identifier.toLowerCase() + "|" + ip));
+    const rateKeyBytes = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(identifier.toLowerCase()));
     const rateKey = Array.from(new Uint8Array(rateKeyBytes), b => b.toString(16).padStart(2, "0")).join("");
     const rateAdmin = createClient(url, secret, { auth: { autoRefreshToken: false, persistSession: false } });
     const { data: rateAllowed, error: rateError } = await rateAdmin.rpc("consume_employee_login_attempt", { p_key_hash: rateKey });
