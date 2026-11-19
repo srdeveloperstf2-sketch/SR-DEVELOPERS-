@@ -1,5 +1,6 @@
 -- S.R. Developers CRM production preflight (READ-ONLY)
 -- Run in Supabase SQL Editor. This report does not change business records or policies.
+drop table if exists pg_temp.srcrm_preflight_report;
 create temporary table srcrm_preflight_report (
   check_name text not null,
   status text not null,
