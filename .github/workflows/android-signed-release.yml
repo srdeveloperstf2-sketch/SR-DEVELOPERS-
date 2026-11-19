@@ -75,7 +75,18 @@ jobs:
               exit 1
             fi
           done
-          echo "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/sr-developers-release.jks"
+          if ! echo "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/sr-developers-release.jks"; then
+            echo "::error::ANDROID_KEYSTORE_BASE64 is invalid or cannot be decoded"
+            exit 1
+          fi
+          if [ ! -s "$RUNNER_TEMP/sr-developers-release.jks" ]; then
+            echo "::error::Decoded Android keystore is empty"
+            exit 1
+          fi
+          if ! keytool -list -keystore "$RUNNER_TEMP/sr-developers-release.jks" -storepass "$ANDROID_KEYSTORE_PASSWORD" -alias "$ANDROID_KEY_ALIAS" >/dev/null 2>&1; then
+            echo "::error::Keystore validation failed. Check keystore password and key alias; credentials are not printed."
+            exit 1
+          fi
           echo "ANDROID_KEYSTORE_PATH=$RUNNER_TEMP/sr-developers-release.jks" >> "$GITHUB_ENV"
           cat >> android/app/build.gradle <<'GRADLE'
 
