@@ -6,15 +6,15 @@ on conflict (id) do update set public=true, file_size_limit=104857600, allowed_m
 
 drop policy if exists "Authenticated staff upload project media" on storage.objects;
 create policy "Authenticated staff upload project media" on storage.objects
-for insert to authenticated with check (bucket_id='project-media');
+for insert to authenticated with check (bucket_id='project-media' and public.current_role() is not null);
 
 drop policy if exists "Authenticated staff update project media" on storage.objects;
 create policy "Authenticated staff update project media" on storage.objects
-for update to authenticated using (bucket_id='project-media') with check (bucket_id='project-media');
+for update to authenticated using (bucket_id='project-media' and public.current_role() is not null) with check (bucket_id='project-media' and public.current_role() is not null);
 
 drop policy if exists "Authenticated staff delete project media" on storage.objects;
 create policy "Authenticated staff delete project media" on storage.objects
-for delete to authenticated using (bucket_id='project-media');
+for delete to authenticated using (bucket_id='project-media' and public.current_role() is not null);
 
 drop policy if exists "Public can view project media" on storage.objects;
 create policy "Public can view project media" on storage.objects
