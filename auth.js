@@ -19,6 +19,7 @@
     if(staffAccountsPanel) staffAccountsPanel.hidden=!adminMode;
     signOut.hidden=false;
     ensurePasswordPanel();
+    window.dispatchEvent(new CustomEvent('sr-auth-ready',{detail:{user,profile}}));
     // Team profiles are loaded after cloud sync in verifySession.
   };
   const showGate = () => { window.srCurrentProfile=null; login.hidden=false; appHeader.hidden=true; appMain.hidden=true; if(footer)footer.hidden=true; signOut.hidden=true; window.dispatchEvent(new CustomEvent('sr-auth-logout')); };
@@ -27,6 +28,7 @@
     setState('Supabase configuration missing. Admin से संपर्क करें।',true); return;
   }
   const client=window.supabase.createClient(cfg.url,cfg.publishableKey);
+  window.srAuthClient=client;
 
   // Forgot-password flow: send a Supabase recovery link to the entered email.
   const forgotButton=document.createElement('button');
@@ -398,5 +400,5 @@
     finally{btn.disabled=false;btn.textContent='Login करें';}
   });
 
-  signOut.addEventListener('click',async()=>{await client.auth.signOut();setState('आप Logout हो गए हैं।')});
+  signOut.addEventListener('click',async()=>{window.dispatchEvent(new CustomEvent('sr-auth-logout'));await client.auth.signOut();setState('आप Logout हो गए हैं।')});
 })();
