@@ -24,8 +24,13 @@ function serverKey(): string | null {
 }
 function randomPassword(): string {
   const alphabet="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()-_=+";
-  const bytes=new Uint8Array(40); crypto.getRandomValues(bytes);
-  return Array.from(bytes,b=>alphabet[b%alphabet.length]).join("");
+  const limit=Math.floor(256/alphabet.length)*alphabet.length;
+  const out:string[]=[];
+  while(out.length<40){
+    const bytes=new Uint8Array(64); crypto.getRandomValues(bytes);
+    for(const b of bytes){if(b>=limit)continue;out.push(alphabet[b%alphabet.length]);if(out.length===40)break;}
+  }
+  return out.join("");
 }
 
 Deno.serve(async(req:Request)=>{
