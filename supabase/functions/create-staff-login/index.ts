@@ -51,8 +51,7 @@ function getServerSecret(): string | null {
 function temporaryPassword(): string {
   // Rejection sampling avoids modulo bias while retaining the 6-digit temporary
   // password format expected by the app. Supabase Auth still enforces throttling.
-  const range = 0x100000000;
-  const limit = Math.floor(range / 1000000) * 1000000;
+  const limit = Math.floor(0x100000000 / 1000000) * 1000000;
   let value: number;
   do {
     const bytes = new Uint32Array(1);
