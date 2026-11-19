@@ -1,3 +1,6 @@
+-- DEPRECATED DUPLICATE: use partner_signup_requests_migration.sql as the canonical migration.
+-- This legacy file is retained for history/reference only; do not execute it.
+-- Production databases must be preflighted and reconciled before applying the canonical file.
 -- S.R. Developers CRM — Channel Partner self-registration and approval
 -- Run after ONE_TIME_SETUP.sql (which creates channel_partners and partner_leads).
 begin;
