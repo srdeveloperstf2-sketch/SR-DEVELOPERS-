@@ -29,7 +29,7 @@
    const status=await native.checkPermissions();
    const permission=status.receive==="granted" ? status : await native.requestPermissions();
    if(permission.receive!=="granted"){ready=false;console.info("FCM permission not granted; registration can be retried");return}
-   if(platform()==="android"&&native.createChannel){await native.createChannel({id:"crm-push",name:"CRM Alerts",description:"S.R. Developers CRM push alerts",importance:5);}
+   if(platform()==="android"&&native.createChannel){await native.createChannel({id:"crm-push",name:"CRM Alerts",description:"S.R. Developers CRM push alerts",importance:5});}
    await installListeners();
    await native.register();
    ready=true;
