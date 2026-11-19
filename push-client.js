@@ -17,6 +17,7 @@
    const status=await native.checkPermissions();
    const permission=status.receive==="granted" ? status : await native.requestPermissions();
    if(permission.receive!=="granted"){console.info("FCM permission not granted");return}
+   if(platform()==="android"&&native.createChannel){await native.createChannel({id:"crm-push",name:"CRM Alerts",description:"S.R. Developers CRM push alerts",importance:5});}
    await native.addListener("registration",async ({value})=>{
     const token=String(value||"").trim();if(!token)return;
     registeredToken=token;
