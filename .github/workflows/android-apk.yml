@@ -89,6 +89,7 @@ jobs:
           else
             echo "::warning::Missing GOOGLE_SERVICES_JSON_BASE64 GitHub secret. APK can build, but FCM push registration will not work on Android until Firebase config is added."
           fi
+          cp www/fcm-config-status.js www/fcm-config-status.js
       - name: Create Android project
         run: npx cap add android
       - name: Copy Firebase config into Android app (when configured)
