@@ -55,12 +55,23 @@ Deno.serve(async (req: Request) => {
     });
 
     const now = new Date();
-    const start = new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString();
+    // Build report windows by India calendar day (IST), then convert to UTC for Postgres.
+    const IST_OFFSET_MS = 330 * 60 * 1000;
+    const istNow = new Date(now.getTime() + IST_OFFSET_MS);
+    const todayIstStartUtc = new Date(Date.UTC(
+      istNow.getUTCFullYear(), istNow.getUTCMonth(), istNow.getUTCDate()
+    ) - IST_OFFSET_MS);
+    const morningStartUtc = new Date(todayIstStartUtc.getTime() - 24 * 60 * 60 * 1000);
+    const start = reportType === "morning" ? morningStartUtc : todayIstStartUtc;
+    const end = reportType === "morning" ? todayIstStartUtc : now;
+    const reportWindowDescription = reportType === "morning"
+      ? "पिछले कैलेंडर दिन (00:00–24:00 IST)"
+      : "आज (00:00 IST से रिपोर्ट बनने तक)";
     const { data, error } = await supabase
       .from("crm_records")
       .select("id,record_type,payload,owner_id,created_by,updated_at")
-      .gte("updated_at", start)
-      .lte("updated_at", now.toISOString())
+      .gte("updated_at", start.toISOString())
+      .lt("updated_at", end.toISOString())
       .order("updated_at", { ascending: false })
       .limit(5000);
     if (error) throw new Error("CRM data query failed: " + error.message);
@@ -84,7 +95,7 @@ Deno.serve(async (req: Request) => {
       <div style="font-family:Arial,sans-serif;max-width:680px;margin:auto;color:#202124">
         <h2 style="color:#176b45">S.R. DEVELOPERS — CRM ${reportLabel}</h2>
         <p><b>Report generated:</b> ${istDate} (IST)</p>
-        <p>यह रिपोर्ट पिछले 24 घंटों में CRM में अपडेट हुए रिकॉर्ड का सारांश है।</p>
+        <p>यह रिपोर्ट ${reportWindowDescription} में CRM रिकॉर्ड अपडेट का सारांश है।</p>
         <table style="width:100%;border-collapse:collapse">
           <thead><tr style="background:#f3f6f4"><th style="padding:10px;text-align:left">Activity</th><th style="padding:10px;text-align:right">Updated records</th></tr></thead>
           <tbody>${tableRows}</tbody>
@@ -110,7 +121,7 @@ Deno.serve(async (req: Request) => {
       sent_to: to,
       report_type: reportType,
       report_label: reportLabel,
-      report_window: "last_24_hours",
+      report_window: reportType === "morning" ? "previous_ist_calendar_day" : "today_ist_to_now",
       records_included: (data || []).length,
       counts,
       resend_id: result.id || null,
