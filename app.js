@@ -24,14 +24,18 @@ async function askReminderPermission(){
  if(plugin){
   try{
    let p=await plugin.checkPermissions();
-   if(p.display!=='granted')p=await plugin.requestPermissions();
+   if(p?.display!=='granted')p=await plugin.requestPermissions();
+   if(p?.display!=='granted'){console.warn('Notification permission denied');return false;}
    try{await plugin.createChannel({id:'crm-reminders',name:'CRM Reminders',description:'Client follow-up and site visit reminders',importance:5,sound:'default',vibration:true,visibility:1})}catch(_){}
-   try{const exact=await plugin.checkExactNotificationSetting();if(exact.value===false)console.warn('Exact alarm permission is not enabled on this phone.')}catch(_){}
-   return p;
-  }catch(err){console.warn('Local notification permission:',err)}
+   try{const exact=await plugin.checkExactNotificationSetting();if(exact.value===false)console.warn('Exact alarm permission is not enabled on this phone; reminders may be delayed.')}catch(_){}
+   return true;
+  }catch(err){console.warn('Local notification permission:',err);return false}
  }
- if('Notification'in window&&Notification.permission==='default'){try{return await Notification.requestPermission()}catch(_){}}
- return null;
+ if('Notification'in window){
+  if(Notification.permission==='granted')return true;
+  if(Notification.permission==='default'){try{return await Notification.requestPermission()==='granted'}catch(_){}}
+ }
+ return false;
 }
 function reminderId(type,id){let s=type+':'+id,h=2166136261;for(let i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,16777619)}return (h>>>0)%2000000000+1}
 function reminderIds(type,id,count=36){return Array.from({length:count},(_,i)=>reminderId(type,id+'-'+i))}
@@ -134,8 +138,8 @@ $('leadForm').onsubmit=e=>{
  db.leads.push({id:crypto.randomUUID(),name:$('lName').value.trim(),phone:$('lPhone').value.trim(),project:$('lProject').value,source:$('lSource').value,partnerId:$('lPartner').value||'',budget:$('lBudget').value,minBudget:$('lMinBudget').value,whatsapp:$('lWhatsapp').value,city:$('lCity').value,address:$('lAddress').value,occupation:$('lOccupation').value,company:$('lCompany').value,propertyType:$('lType').value,size:$('lSize').value,purpose:$('lPurpose').value,timeline:$('lTimeline').value,payment:$('lPayment').value,priority:$('lPriority').value,campaign:$('lCampaign').value,status:$('lStatus').value,date:$('lDate').value,assigned:assignedName,owner_id:assignedProfile?.id||actor.id||null,created_by:actor.id||null,created_by_name:actor.full_name||'',created_by_role:actor.role||'',notes:$('lNotes').value,duplicateOf:duplicate?.id||null,created:today()});
  e.target.reset();save();render();alert(duplicate?'Lead सेव हो गई। इस मोबाइल नंबर की पुरानी Lead भी मौजूद है; duplicate alert के साथ नया रिकॉर्ड रखा गया।':'Lead सेव हो गई।');
 };
-$('followForm').onsubmit=async e=>{e.preventDefault();const item={id:crypto.randomUUID(),lead:$('fLead').value,when:$('fWhen').value,notes:$('fNotes').value,reminder:Number($('fReminder').value)};if(!item.lead){alert('पहले Lead जोड़ें।');return}db.followups.push(item);save();e.target.reset();render();let result={ok:true,skipped:true};if(item.reminder!==-1){try{await askReminderPermission();result=await scheduleReminder('followup',item,item.reminder)}catch(err){console.warn('Follow-up reminder setup failed; record remains saved:',err)}}alert(result.ok?(result.skipped?'Follow-up सेव हो गया।':'Follow-up सेव हो गया और reminder schedule हो गया।'):'Follow-up CRM में सेव हो गया। Notification permission उपलब्ध न होने के कारण reminder नहीं लगा; रिकॉर्ड सुरक्षित है।');};
-$('visitForm').onsubmit=async e=>{e.preventDefault();const item={id:crypto.randomUUID(),lead:$('vLead').value,when:$('vWhen').value,project:$('vProject').value,assigned:$('vAssigned').value,notes:$('vNotes').value,reminder:Number($('vReminder').value)};if(!item.lead){alert('पहले Lead जोड़ें।');return}db.visits.push(item);save();e.target.reset();render();let result={ok:true,skipped:true};if(item.reminder!==-1){try{await askReminderPermission();result=await scheduleReminder('visit',item,item.reminder)}catch(err){console.warn('Visit reminder setup failed; record remains saved:',err)}}alert(result.ok?(result.skipped?'Site Visit सेव हो गई।':'Site Visit सेव हो गई और reminder schedule हो गया।'):'Site Visit CRM में सेव हो गई। Notification permission उपलब्ध न होने के कारण reminder नहीं लगा; रिकॉर्ड सुरक्षित है।');};
+$('followForm').onsubmit=async e=>{e.preventDefault();const item={id:crypto.randomUUID(),lead:$('fLead').value,when:$('fWhen').value,notes:$('fNotes').value,reminder:Number($('fReminder').value)};if(!item.lead){alert('पहले Lead जोड़ें।');return}db.followups.push(item);save();e.target.reset();render();let result={ok:true,skipped:true};if(item.reminder!==-1){try{const permitted=await askReminderPermission();result=permitted?await scheduleReminder('followup',item,item.reminder):{ok:false,reason:'permission'}}catch(err){console.warn('Follow-up reminder setup failed; record remains saved:',err)}}alert(result.ok?(result.skipped?'Follow-up सेव हो गया।':'Follow-up सेव हो गया और reminder schedule हो गया।'):'Follow-up CRM में सेव हो गया। Notification permission उपलब्ध न होने के कारण reminder नहीं लगा; रिकॉर्ड सुरक्षित है।');};
+$('visitForm').onsubmit=async e=>{e.preventDefault();const item={id:crypto.randomUUID(),lead:$('vLead').value,when:$('vWhen').value,project:$('vProject').value,assigned:$('vAssigned').value,notes:$('vNotes').value,reminder:Number($('vReminder').value)};if(!item.lead){alert('पहले Lead जोड़ें।');return}db.visits.push(item);save();e.target.reset();render();let result={ok:true,skipped:true};if(item.reminder!==-1){try{const permitted=await askReminderPermission();result=permitted?await scheduleReminder('visit',item,item.reminder):{ok:false,reason:'permission'}}catch(err){console.warn('Visit reminder setup failed; record remains saved:',err)}}alert(result.ok?(result.skipped?'Site Visit सेव हो गई।':'Site Visit सेव हो गई और reminder schedule हो गया।'):'Site Visit CRM में सेव हो गई। Notification permission उपलब्ध न होने के कारण reminder नहीं लगा; रिकॉर्ड सुरक्षित है।');};
 $('bookingForm').onsubmit=e=>{
  e.preventDefault();
  const project=$('bProject').value, unit=$('bUnit').value.trim(), status=$('bStatus').value;
