@@ -52,6 +52,20 @@ Deno.serve(async (req: Request) => {
       return reply(req, { error: "Employee ID / Mobile Number या Password सही नहीं है।" }, 400);
     }
 
+    // Server-side durable login throttle: 10 attempts per identifier+IP in a 15-minute window.
+    // Hash the key before sending it to the RPC; raw employee/mobile/IP is never stored.
+    const forwarded = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "";
+    const ip = forwarded || "unknown-ip";
+    const rateKeyBytes = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(identifier.toLowerCase() + "|" + ip));
+    const rateKey = Array.from(new Uint8Array(rateKeyBytes), b => b.toString(16).padStart(2, "0")).join("");
+    const rateAdmin = createClient(url, secret, { auth: { autoRefreshToken: false, persistSession: false } });
+    const { data: rateAllowed, error: rateError } = await rateAdmin.rpc("consume_employee_login_attempt", { p_key_hash: rateKey });
+    if (rateError) {
+      console.error("Login rate-limit RPC unavailable", rateError.message);
+      return reply(req, { error: "Login सेवा अस्थायी रूप से उपलब्ध नहीं है।" }, 503);
+    }
+    if (rateAllowed !== true) return reply(req, { error: "बहुत अधिक Login प्रयास हुए। 15 मिनट बाद फिर प्रयास करें।" }, 429);
+
     const admin = createClient(url, secret, { auth: { autoRefreshToken: false, persistSession: false } });
     const publicClient = createClient(url, anon, { auth: { autoRefreshToken: false, persistSession: false } });
 
