@@ -19,8 +19,11 @@ function serverKey(): string | null {
   catch { return null; }
 }
 function makePassword() {
-  const bytes = new Uint32Array(1); crypto.getRandomValues(bytes);
-  return String(bytes[0] % 1_000_000).padStart(6, "0");
+  // Uniformly sample the 6-digit range using rejection sampling.
+  const limit = Math.floor(0x100000000 / 1000000) * 1000000;
+  let value: number;
+  do { const bytes = new Uint32Array(1); crypto.getRandomValues(bytes); value = bytes[0]; } while (value >= limit);
+  return String(value % 1000000).padStart(6, "0");
 }
 Deno.serve(async (req: Request) => {
   const origin = req.headers.get("Origin");
