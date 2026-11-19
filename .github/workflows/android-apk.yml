@@ -68,11 +68,22 @@ jobs:
         run: npx cap add android
       - name: Sync Android project
         run: npx cap sync android
-      - name: Build debug APK
+      - name: Build debug APK (retry transient Maven/Gradle resolution failures)
         run: |
           cd android
           chmod +x gradlew
-          ./gradlew assembleDebug
+          for attempt in 1 2 3; do
+            echo "Gradle build attempt $attempt/3"
+            if ./gradlew --no-daemon --stacktrace assembleDebug; then
+              exit 0
+            fi
+            if [ "$attempt" -lt 3 ]; then
+              echo "Build attempt failed; retrying after 20 seconds in case dependency repositories are temporarily unavailable."
+              sleep 20
+            fi
+          done
+          echo "::error::Android build failed after 3 attempts. See Gradle dependency resolution/compiler errors above."
+          exit 1
       - name: Upload installable APK
         uses: actions/upload-artifact@v4
         with:
