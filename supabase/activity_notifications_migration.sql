@@ -41,7 +41,7 @@ begin
   select p.id,p_event_type,p_title,p_actor_id,p_actor_name,p_actor_role,
     p_employee_name,p_employee_phone,p_employee_role,p_owner_id,p_owner_name,
     p_manager_name,p_team_leader_name,p_customer_name,p_customer_phone,p_project_name,p_record_id
-  from public.profiles p where p.role='admin' and p.is_active=true;
+  from public.profiles p where p.role in ('admin','manager','team_leader') and p.is_active=true;
 end;
 $$;
 
