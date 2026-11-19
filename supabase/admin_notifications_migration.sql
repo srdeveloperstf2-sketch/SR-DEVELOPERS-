@@ -36,13 +36,13 @@ alter table public.admin_notifications enable row level security;
 drop policy if exists admin_notifications_read_own on public.admin_notifications;
 create policy admin_notifications_read_own on public.admin_notifications
   for select to authenticated
-  using (recipient_id = auth.uid() and public.is_admin());
+  using (recipient_id = auth.uid() and (public.is_admin() or exists (select 1 from public.profiles p where p.id = auth.uid() and p.role in ('manager','team_leader') and p.is_active = true)));
 
 drop policy if exists admin_notifications_update_own on public.admin_notifications;
 create policy admin_notifications_update_own on public.admin_notifications
   for update to authenticated
-  using (recipient_id = auth.uid() and public.is_admin())
-  with check (recipient_id = auth.uid() and public.is_admin());
+  using (recipient_id = auth.uid() and (public.is_admin() or exists (select 1 from public.profiles p where p.id = auth.uid() and p.role in ('manager','team_leader') and p.is_active = true)))
+  with check (recipient_id = auth.uid() and (public.is_admin() or exists (select 1 from public.profiles p where p.id = auth.uid() and p.role in ('manager','team_leader') and p.is_active = true)));
 
 grant select, update on public.admin_notifications to authenticated;
 
@@ -80,7 +80,7 @@ begin
     p_manager_name,p_team_leader_name,p_customer_name,p_customer_phone,
     p_project_name,p_record_id
   from public.profiles p
-  where p.role='admin' and p.is_active=true;
+  where p.role in ('admin','manager','team_leader') and p.is_active=true;
 end;
 $$;
 
