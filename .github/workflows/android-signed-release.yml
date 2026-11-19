@@ -15,6 +15,7 @@ on:
       - 'capacitor.config.json'
       - 'capacitor.config.ts'
       - '.github/workflows/android-signed-release.yml'
+      - 'tests/**'
 
 permissions:
   contents: read
@@ -48,6 +49,8 @@ jobs:
           node --check partner-admin.js
           node --check crm-insights.js
           node --check push-client.js
+      - name: Run CRM security/notification regression tests
+        run: node --test tests/*.test.js
       - name: Install dependencies
         run: npm install
 
