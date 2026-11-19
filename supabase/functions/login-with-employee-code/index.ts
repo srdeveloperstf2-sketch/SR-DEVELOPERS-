@@ -54,7 +54,9 @@ Deno.serve(async (req: Request) => {
 
     // Durable server-side throttle: 10 attempts per normalized identifier in a 15-minute window.
     // Avoid spoofable forwarded-IP headers; hash identifier before sending to the RPC.
-    const rateKeyBytes = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(identifier.toLowerCase()));
+    // Canonicalize all accepted login forms to reduce throttle-key variants.
+    const normalizedRateId = isCode ? code : mobile;
+    const rateKeyBytes = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(normalizedRateId));
     const rateKey = Array.from(new Uint8Array(rateKeyBytes), b => b.toString(16).padStart(2, "0")).join("");
     const rateAdmin = createClient(url, secret, { auth: { autoRefreshToken: false, persistSession: false } });
     const { data: rateAllowed, error: rateError } = await rateAdmin.rpc("consume_employee_login_attempt", { p_key_hash: rateKey });
