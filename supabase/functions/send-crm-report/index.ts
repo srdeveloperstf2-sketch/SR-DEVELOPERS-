@@ -89,7 +89,7 @@ Deno.serve(async (req: Request) => {
 
     const tableRows = rows.length
       ? rows.map((item) => `<tr><td style="padding:10px;border-bottom:1px solid #eee">${item.label}</td><td style="padding:10px;text-align:right;border-bottom:1px solid #eee">${item.count}</td></tr>`).join("")
-      : '<tr><td colspan="2" style="padding:12px">पिछले 24 घंटों में कोई CRM रिकॉर्ड अपडेट नहीं हुआ।</td></tr>';
+      : '<tr><td colspan="2" style="padding:12px">${reportWindowDescription} में कोई CRM रिकॉर्ड अपडेट नहीं हुआ।</td></tr>';
 
     const html = `
       <div style="font-family:Arial,sans-serif;max-width:680px;margin:auto;color:#202124">
