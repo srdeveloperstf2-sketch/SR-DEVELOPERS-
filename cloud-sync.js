@@ -9,7 +9,9 @@
     if(key==='leads') return item.owner_id||item.ownerId||byName(item.assigned)||user.id;
     if(['followups','visits','bookings'].includes(key)){
       const lead=(db.leads||[]).find(x=>x.id===item.lead);
-      return item.owner_id||item.ownerId||(lead?(lead.owner_id||lead.ownerId||byName(lead.assigned)):null)||user.id;
+      // Fail closed if a parent lead is not hydrated: do not silently reassign
+      // child activity to the current user during background migration.
+      return item.owner_id||item.ownerId||(lead?(lead.owner_id||lead.ownerId||byName(lead.assigned)):null)||null;
     }
     return item.owner_id||item.ownerId||user.id;
   }
