@@ -104,3 +104,28 @@ Supabase Auth bans and password rotation do not guarantee instant invalidation o
 - Browser notifications are not equivalent to native scheduled alarms; browser fallback timers only work while the page remains alive and must not be treated as reliable background alarms.
 - Current Admin Activity notification UI uses realtime and periodic refresh while the app is running. Background push delivery to all staff, leave approval/rejection push, and call/booking notifications require a production push delivery design (e.g. FCM token registration, server-side event triggers, delivery retry/cleanup) and device testing; do not mark these as completed merely because the Admin notification table exists.
 - Test matrix: schedule a follow-up and site visit 10 minutes ahead, force-close app, verify alarm sound/vibration and notification action; deny permission and verify record saved but reminder blocked with clear instructions; test Android 13+ and one older Android device.
+
+
+## Audit continuation (source review; live verification still pending)
+
+### Inactive staff
+- Source-reviewed: `current_role()` in ONE_TIME_SETUP/schema returns NULL for inactive profiles; inactive staff RLS guard replaces named scope policies for leads/followups/site_visits/bookings and extended guard gates CRM records, attendance, targets, team messages, and leave requests using active role checks.
+- `admin-toggle-staff-status` verifies a valid caller JWT, active Admin profile, rejects self-disable and Admin targets; deactivation bans Auth, marks profile inactive, rotates password; activation unbans then marks active with rollback on profile update failure.
+- Before production apply, inspect ALL existing permissive policies (Postgres policies are OR-combined), particularly legacy policies on tables and Storage. The named policy replacement alone cannot prove no other permissive policy grants access.
+- Live tests required: deactivate test staff, verify sign-in ban, then with pre-existing session verify reads/writes denied on each protected table, Storage upload/update/delete, Realtime; re-enable and password-reset workflow.
+
+### Login and account creation
+- Source-reviewed: employee-code/mobile login checks active profile before Auth sign-in and uses service-role RPC throttle; RPC is fail-closed if migration/RPC unavailable. Current limiter is 10 tries per normalized identifier/15 minutes (identifier-only; not IP keyed). This is susceptible to targeted lockout and needs infrastructure/IP-aware anti-abuse mitigation that does not trust spoofed forwarded headers.
+- Staff login creation requires active Admin JWT/profile; accepts only allowlisted roles; pending signup request must exist; manager relationship checked; account/profile/approval/password steps include rollback paths. Duplicate Auth email scan is paginated and fail-closed at scan cap.
+- Partner login creation requires active Admin; validates partner record, pending/active status and absence of existing linked login; creates Auth user then links partner with rollback.
+- Public staff/partner signup insert policies remain public and do not implement durable per-IP throttling or CAPTCHA. Spam/abuse control is outstanding; add edge/provider rate limiting or CAPTCHA before public release. Review the two partner signup migrations for schema drift before applying either: both create the same table name with different phone/partner_type constraints and must not be treated as interchangeable.
+- Live tests required: duplicate email/phone/employee code, pending request replay, role escalation attempt, manager ID mismatch, inactive Admin rejection, password reset, throttle after 10 attempts and reset after 15 minutes, account creation rollback.
+
+### Background push
+- Source reviewed: notification database/admin activity UI exists; Android local alarms support reminders when permissions granted.
+- Background push delivery to Android app when closed is not proven. FCM setup requires Firebase project, Android app registration, Firebase config, server credentials stored as Supabase Edge secrets, device push token registration, server event triggers, delivery retry and device tests. No secrets/configuration should be committed to the repo.
+- Required device test: force-close app; deliver test push for follow-up due, leave request/approval, assigned lead/call event; verify tap routes to correct screen; test revoked permissions/token expiry.
+
+### Release gate
+- Website CI success does not mean Supabase migrations or Edge Functions are deployed. Android CI success does not prove install/runtime notification behavior.
+- Release remains blocked until migration apply/review, Edge Function deployment, policy conflict review, push setup/device test, and role matrix test (Admin, Manager, Team Leader, Sales Executive, Partner) are recorded with evidence.
