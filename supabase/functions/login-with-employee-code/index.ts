@@ -52,10 +52,8 @@ Deno.serve(async (req: Request) => {
       return reply(req, { error: "Employee ID / Mobile Number या Password सही नहीं है।" }, 400);
     }
 
-    // Server-side durable login throttle: 10 attempts per identifier+IP in a 15-minute window.
-    // Hash the key before sending it to the RPC; raw employee/mobile/IP is never stored.
-    const forwarded = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "";
-    const ip = forwarded || "unknown-ip";
+    // Durable server-side throttle: 10 attempts per normalized identifier in a 15-minute window.
+    // Avoid spoofable forwarded-IP headers; hash identifier before sending to the RPC.
     const rateKeyBytes = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(identifier.toLowerCase()));
     const rateKey = Array.from(new Uint8Array(rateKeyBytes), b => b.toString(16).padStart(2, "0")).join("");
     const rateAdmin = createClient(url, secret, { auth: { autoRefreshToken: false, persistSession: false } });
