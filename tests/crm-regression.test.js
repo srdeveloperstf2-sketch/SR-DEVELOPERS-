@@ -86,7 +86,7 @@ test('Supabase Edge Function gateway auth config', () => {
 test('employee login accepts common stored phone formats', () => {
   const loginFn = read('supabase/functions/login-with-employee-code/index.ts');
   assert.match(loginFn, /const phoneVariants = mobile \? \[mobile, mobile\.slice\(1\), mobile\.slice\(2\), digits/);
-  assert.match(loginFn, /\.in\('phone', phoneVariants\)/);
+  assert.match(loginFn, /\.in\("phone", phoneVariants\)/);
   assert.match(loginFn, /\.ilike\('employee_code', code\)/);
 });
 
