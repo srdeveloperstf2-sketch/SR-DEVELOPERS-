@@ -48,9 +48,12 @@ order by tablename, policyname;
 4. Review and apply the updated `project_media_storage_migration.sql` storage mutation policies (commit 84d8fad2). Verify the bucket remains public-read intentionally, while upload/update/delete require `public.current_role() is not null`. This migration upserts bucket configuration and replaces its named storage policies; inspect existing storage policies before running it.
 5. Do not rerun seed/setup scripts. If any policy names differ from live, stop and reconcile rather than blindly dropping/recreating.
 
+## Login throttling migration
+- Apply `employee_login_rate_limit_migration.sql` before deploying the updated `login-with-employee-code` function. It creates a service-role-only RPC and hashed identifier keys; raw identifiers are not stored. The function fails closed if the RPC is unavailable. The throttle is 10 attempts per identifier per 15-minute window; this is a protective baseline, not a substitute for monitoring or captcha on public registration.
+
 ## Webhook secret migration (TimelinesAI)
-- `timelinesai-webhook` now accepts the secret only via the `x-webhook-secret` request header; URL query `?secret=` is no longer accepted to prevent credential leakage into logs/history.
-- Update the TimelinesAI webhook configuration to send `x-webhook-secret: <same WHATSAPP_WEBHOOK_SECRET>` before deploying this function. If the integration cannot set custom headers, do not deploy this breaking change yet; use a secure gateway/header injection instead. Never place the secret in the webhook URL.
+- `timelinesai-webhook` now prefers `x-webhook-secret` header, but temporarily accepts the legacy `?secret=` query to avoid interrupting integration migration. Query use emits a warning without logging the secret.
+- Configure TimelinesAI to send `x-webhook-secret: <same WHATSAPP_WEBHOOK_SECRET>`, confirm delivery, then remove query fallback in a later commit. Never put the secret in a URL going forward.
 
 ## Account creation and login security notes
 - `create-staff-login` now paginates Auth users (up to 100 pages × 1,000) before duplicate-email handling; it fails closed if the safe scan limit is reached. Temporary 6-digit codes in staff creation and password-reset functions use rejection sampling to avoid modulo bias; the short format is retained for compatibility, so rely on Supabase Auth throttling and reset temporary passwords promptly.
