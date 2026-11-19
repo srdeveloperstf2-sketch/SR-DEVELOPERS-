@@ -53,7 +53,7 @@ order by tablename, policyname;
 - Update the TimelinesAI webhook configuration to send `x-webhook-secret: <same WHATSAPP_WEBHOOK_SECRET>` before deploying this function. If the integration cannot set custom headers, do not deploy this breaking change yet; use a secure gateway/header injection instead. Never place the secret in the webhook URL.
 
 ## Account creation and login security notes
-- `create-staff-login` now paginates Auth users (up to 100 pages × 1,000) before duplicate-email handling; it fails closed if the safe scan limit is reached. Temporary 6-digit codes use rejection sampling to avoid modulo bias; the short format is retained for compatibility, so rely on Supabase Auth throttling and reset temporary passwords promptly.
+- `create-staff-login` now paginates Auth users (up to 100 pages × 1,000) before duplicate-email handling; it fails closed if the safe scan limit is reached. Temporary 6-digit codes in staff creation and password-reset functions use rejection sampling to avoid modulo bias; the short format is retained for compatibility, so rely on Supabase Auth throttling and reset temporary passwords promptly.
 - `login-with-employee-code` checks an active CRM profile before password verification and delegates password checking/session creation to Supabase Auth. Confirm Auth rate-limit settings in the live project and test employee-code/mobile/email login, inactive profiles, invalid credentials, and repeated failures.
 
 ## Edge Function deployment
