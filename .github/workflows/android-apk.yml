@@ -15,7 +15,6 @@ on:
       - 'partner.html'
       - 'partner.js'
       - 'partner-admin.js'
-      - 'partner-admin.js'
       - 'cloud-sync.js'
       - 'supabase/**'
       - 'manifest.webmanifest'
@@ -24,6 +23,7 @@ on:
       - 'sw.js'
       - 'package.json'
       - 'capacitor.config.ts'
+      - 'capacitor.config.json'
       - '.github/workflows/android-apk.yml'
     branches: [main]
 permissions:
