@@ -8,3 +8,9 @@ verify_jwt = false
 
 [functions.timelinesai-webhook]
 verify_jwt = false
+
+[functions.register-push-device]
+verify_jwt = true
+
+[functions.deliver-crm-push]
+verify_jwt = false
