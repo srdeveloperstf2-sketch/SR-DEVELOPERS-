@@ -118,7 +118,7 @@ Supabase Auth bans and password rotation do not guarantee instant invalidation o
 - Source-reviewed: employee-code/mobile login checks active profile before Auth sign-in and uses service-role RPC throttle; RPC is fail-closed if migration/RPC unavailable. Current limiter is 10 tries per normalized identifier/15 minutes (identifier-only; not IP keyed). This is susceptible to targeted lockout and needs infrastructure/IP-aware anti-abuse mitigation that does not trust spoofed forwarded headers.
 - Staff login creation requires active Admin JWT/profile; accepts only allowlisted roles; pending signup request must exist; manager relationship checked; account/profile/approval/password steps include rollback paths. Duplicate Auth email scan is paginated and fail-closed at scan cap.
 - Partner login creation requires active Admin; validates partner record, pending/active status and absence of existing linked login; creates Auth user then links partner with rollback.
-- Public staff/partner signup insert policies remain public and do not implement durable per-IP throttling or CAPTCHA. Spam/abuse control is outstanding; add edge/provider rate limiting or CAPTCHA before public release. Review the two partner signup migrations for schema drift before applying either: both create the same table name with different phone/partner_type constraints and must not be treated as interchangeable.
+- Public staff/partner signup insert policies remain public and do not implement durable per-IP throttling or CAPTCHA. Spam/abuse control is outstanding; add edge/provider rate limiting or CAPTCHA before public release. Partner signup migration reconciliation (source): `partner_signup_requests_migration.sql` is now the canonical strict version for new installs, with required phone, partner-type allowlist, email/phone checks, and pending-email uniqueness. `partner_signup_migration.sql` is marked deprecated and retained for history only. This is NOT yet live-schema-verified: inspect existing columns, constraints, duplicate pending emails, policies and grants before applying or altering production.
 - Live tests required: duplicate email/phone/employee code, pending request replay, role escalation attempt, manager ID mismatch, inactive Admin rejection, password reset, throttle after 10 attempts and reset after 15 minutes, account creation rollback.
 
 ### Background push
@@ -145,7 +145,7 @@ Supabase Auth bans and password rotation do not guarantee instant invalidation o
 - Public staff/partner registration inserts are allowed by RLS; form validation and pending approval reduce account privilege risk but do not stop spam/flood. Robust anti-abuse (Captcha/Turnstile or rate-limited server endpoint) is not implemented. Do not make public signup unrestricted account creation.
 - Background push (FCM) has no verified token-registration, server delivery, credentials/secrets, retry, or device testing in the repository's reviewed path. This cannot be marked completed without Firebase project configuration and secure secrets.
 - Notification migrations create in-app/Admin activity records; they are not proof of OS push delivery while the app is closed.
-- Two partner signup migration files exist (`partner_signup_migration.sql`, `partner_signup_requests_migration.sql`) with different table constraints. Review actual live schema and choose/reconcile before applying; do not blindly run both.
+- Partner migration source conflict has been reconciled: `partner_signup_requests_migration.sql` is canonical (strict schema + pending-email uniqueness), while `partner_signup_migration.sql` is deprecated. Production table shape/constraints/policies must still be SELECT-inspected and reconciled before any SQL apply; the canonical file's `CREATE TABLE IF NOT EXISTS` does not retroactively add constraints to an existing table.
 - Production Supabase migrations, deployed Edge Functions, webhook header migration, storage policy conflict review, Realtime tests, and role matrix tests are pending.
 
 ### Release tests required
@@ -156,3 +156,31 @@ Supabase Auth bans and password rotation do not guarantee instant invalidation o
 5. Test follow-up/site visit native alarm after force-close; permission denied; Android exact-alarm setting.
 6. Test leave request/approval/rejection in-app notifications, and separately verify FCM push once configured.
 7. Test Admin, Manager, Team Leader, Sales Executive, Partner accounts for cross-team/partner isolation and CRUD scopes.
+
+
+### Partner migration preflight (SELECT-only; production required)
+```sql
+select column_name, data_type, is_nullable
+from information_schema.columns
+where table_schema='public' and table_name='partner_signup_requests'
+order by ordinal_position;
+
+select conname, pg_get_constraintdef(oid)
+from pg_constraint
+where conrelid='public.partner_signup_requests'::regclass;
+
+select indexname, indexdef
+from pg_indexes
+where schemaname='public' and tablename='partner_signup_requests';
+
+select policyname, roles, cmd, qual, with_check
+from pg_policies
+where schemaname='public' and tablename='partner_signup_requests'
+order by policyname;
+
+select lower(email), count(*)
+from public.partner_signup_requests
+where status='pending'
+group by lower(email)
+having count(*) > 1;
+```
