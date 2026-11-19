@@ -73,6 +73,7 @@ jobs:
         run: |
           mkdir -p www
           cp index.html partner.html styles.css staff-control.css staff-control.js app.js emi.js auth.js notifications.js push-client.js crm-insights.js partner.js partner-admin.js cloud-sync.js manifest.webmanifest icon.svg sw.js www/
+          echo 'window.SR_FCM_CONFIGURED=false;' > www/fcm-config-status.js
           mkdir -p www/assets www/supabase
           cp assets/sr-developers-logo.svg www/assets/
           cp supabase/config.js www/supabase/config.js
@@ -84,6 +85,7 @@ jobs:
             echo "$GOOGLE_SERVICES_JSON_BASE64" | base64 --decode > google-services.json
             node -e "const fs=require('fs');const j=JSON.parse(fs.readFileSync('google-services.json','utf8'));if(!j.project_info?.project_id||!j.client?.some(c=>c.client_info?.android_client_info?.package_name==='in.srdevelopers.crm')){console.error('Firebase JSON does not match Android package in.srdevelopers.crm');process.exit(2)}"
             echo "Firebase Android config validated."
+            echo 'window.SR_FCM_CONFIGURED=true;' > www/fcm-config-status.js
           else
             echo "::warning::Missing GOOGLE_SERVICES_JSON_BASE64 GitHub secret. APK can build, but FCM push registration will not work on Android until Firebase config is added."
           fi
