@@ -2,6 +2,16 @@ name: Build signed S.R. Developers Android APK
 
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '*.js'
+      - 'index.html'
+      - 'partner.html'
+      - 'styles.css'
+      - 'staff-control.css'
+      - 'supabase/config.js'
+      - '.github/workflows/android-signed-release.yml'
 
 permissions:
   contents: read
