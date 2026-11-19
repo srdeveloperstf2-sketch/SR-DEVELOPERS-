@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import vm from 'node:vm';
 
 const read = path => fs.readFileSync(path, 'utf8');
 const auth = read('auth.js');
@@ -30,10 +31,32 @@ test('team-leader and manager access uses recursive reporting scope', () => {
   assert.match(hardening, /owner_id=auth\.uid\(\)/);
 });
 
-test('cloud sync cache quota failures do not abort initialization', () => {
+test('cloud sync cache quota failures do not abort initialization', async () => {
   assert.match(cloud, /function safeCacheSave\(db\)\{try\{localStorage\.setItem/);
   assert.match(cloud, /CRM local cache save failed; cloud remains primary/);
   assert.equal((cloud.match(/safeCacheSave\(db\);/g)||[]).length, 2);
+
+  const events=[];
+  const profiles=[{id:'test-user',full_name:'Test User',role:'sales_executive',is_active:true}];
+  const window={
+    addEventListener(){},
+    dispatchEvent(event){events.push(event.type)},
+    srRender:undefined
+  };
+  const localStorage={
+    getItem(){return '{}'},
+    setItem(){throw new Error('QuotaExceededError')}
+  };
+  class FakeCustomEvent{constructor(type,options={}){this.type=type;this.detail=options.detail}}
+  vm.runInNewContext(cloud,{window,localStorage,CustomEvent:FakeCustomEvent,console,setTimeout(){return 0}});
+  const client={from(table){
+    const q={select(){return q},eq(){return Promise.resolve({data:profiles,error:null})},order(){return q},range(){return Promise.resolve({data:[],error:null})},upsert(){return Promise.resolve({error:null})},delete(){return q}};
+    return q;
+  }};
+  const result=await window.srCloudInit(client,{id:'test-user'},profiles[0]);
+  assert.equal(result.loaded,0);
+  assert.equal(window.srCloudReady,true);
+  assert.ok(events.includes('sr-local-storage-full'));
 });
 
 test('cloud sync does not upload inaccessible owner records', () => {
