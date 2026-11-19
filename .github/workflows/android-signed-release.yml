@@ -34,13 +34,14 @@ jobs:
           node --check notifications.js
           node --check partner-admin.js
           node --check crm-insights.js
+          node --check push-client.js
       - name: Install dependencies
         run: npm install
 
       - name: Prepare web assets
         run: |
           mkdir -p www
-          cp index.html partner.html styles.css staff-control.css staff-control.js app.js emi.js auth.js notifications.js crm-insights.js partner.js partner-admin.js cloud-sync.js manifest.webmanifest icon.svg sw.js www/
+          cp index.html partner.html styles.css staff-control.css staff-control.js app.js emi.js auth.js notifications.js crm-insights.js partner.js partner-admin.js cloud-sync.js push-client.js manifest.webmanifest icon.svg sw.js www/
           mkdir -p www/supabase
           cp supabase/config.js www/supabase/config.js
 
