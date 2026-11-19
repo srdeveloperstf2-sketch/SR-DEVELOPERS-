@@ -45,6 +45,15 @@ jobs:
         with:
           distribution: temurin
           java-version: '21'
+      - name: Cache Gradle dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-${{ runner.os }}-${{ hashFiles('package.json', 'capacitor.config.json') }}
+          restore-keys: |
+            gradle-${{ runner.os }}-
       - name: Validate CRM JavaScript syntax
         run: |
           node --check app.js
@@ -93,11 +102,14 @@ jobs:
           chmod +x gradlew
           for attempt in 1 2 3; do
             echo "Gradle build attempt $attempt/3"
-            if ./gradlew --no-daemon --stacktrace assembleDebug; then
-              exit 0
+            if [ "$attempt" -eq 1 ]; then
+              if ./gradlew --no-daemon --stacktrace assembleDebug; then exit 0; fi
+            else
+              echo "Refreshing Gradle dependency metadata for retry $attempt"
+              if ./gradlew --no-daemon --refresh-dependencies --stacktrace assembleDebug; then exit 0; fi
             fi
             if [ "$attempt" -lt 3 ]; then
-              echo "Build attempt failed; retrying after 20 seconds in case dependency repositories are temporarily unavailable."
+              echo "Build attempt failed; retrying after 20 seconds."
               sleep 20
             fi
           done
