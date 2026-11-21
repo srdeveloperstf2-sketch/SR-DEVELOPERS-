@@ -332,3 +332,31 @@ footer{color:#89948d}
  background:#ffffff!important;
  color:#174b32!important;
 }
+
+/* Mobile CRM header and notification control stabilization */
+html,body{width:100%;max-width:100%;overflow-x:hidden}
+header{width:100%;max-width:100%;flex-wrap:wrap;gap:10px;padding:10px 12px}
+header .brand{min-width:0;flex:1 1 180px}
+header .brand>div{min-width:0}
+header .brand b{font-size:clamp(14px,4vw,19px);line-height:1.15}
+header .session-tools{display:flex;align-items:center;justify-content:flex-end;gap:7px;flex:1 1 100%;min-width:0;max-width:100%;flex-wrap:wrap}
+header .session-tools>*{max-width:100%;min-width:0}
+#srAdminBell{flex:0 0 auto;position:relative}
+#srAdminBell button{white-space:nowrap;min-height:40px}
+#srAdminNoticePanel{right:0;left:auto;max-width:calc(100vw - 24px)}
+main{width:100%;min-width:0}
+.panel,form,nav,.quick,.stats{min-width:0;max-width:100%}
+input[type="datetime-local"]{min-width:0;width:100%;max-width:100%;font-size:14px}
+@media(max-width:480px){
+ header{align-items:flex-start}
+ header .session-tools{justify-content:flex-start}
+ header .session-tools button{padding:9px 11px;font-size:12px}
+ #srAdminBell button{font-size:12px;padding:9px 10px}
+ main{padding:12px}
+ .welcome h1{font-size:clamp(24px,8vw,31px)}
+ .panel{padding:13px}
+ form{grid-template-columns:minmax(0,1fr)}
+ form .wide{grid-column:1/-1}
+ label,input,select,textarea{min-width:0}
+ .contact-actions{flex-wrap:wrap}
+}
