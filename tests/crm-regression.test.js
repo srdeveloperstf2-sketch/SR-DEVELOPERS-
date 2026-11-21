@@ -83,7 +83,7 @@ test('Android workflow validates code, Firebase config and artifact', () => {
   assert.match(workflow, /GOOGLE_SERVICES_JSON_BASE64/);
   assert.match(workflow, /in\.srdevelopers\.crm/);
   assert.match(workflow, /assembleDebug/);
-  assert.match(workflow, /actions\/upload-artifact@v4/);
+  assert.match(workflow, /actions\/upload-artifact@v5/);
 });
 
 test('Supabase live preflight report is read-only and checks critical backend gates', () => {
