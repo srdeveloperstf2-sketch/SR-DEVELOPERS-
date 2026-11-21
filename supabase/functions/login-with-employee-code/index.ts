@@ -4,10 +4,14 @@ const origins = (Deno.env.get("ALLOWED_ORIGINS") ?? "https://srdeveloperstf2-ske
   .split(",").map(v => v.trim()).filter(Boolean);
 
 function cors(req: Request) {
+  // This is a public employee-login endpoint; CORS is not an authentication boundary.
+  // Echo the requesting origin so Android WebView/Capacitor and hosted web clients
+  // can complete preflight. Credentials are never enabled; password + rate-limit
+  // checks remain enforced by the handler.
   const origin = req.headers.get("Origin") ?? "";
   return {
     "Vary": "Origin",
-    "Access-Control-Allow-Origin": origins.includes(origin) ? origin : "https://srdeveloperstf2-sketch.github.io",
+    "Access-Control-Allow-Origin": origin || "*",
     "Access-Control-Allow-Headers": "authorization, apikey, x-client-info, content-type",
     "Access-Control-Allow-Methods": "POST, OPTIONS",
     "Access-Control-Max-Age": "86400",
@@ -28,8 +32,8 @@ function serverKey(): string | null {
 }
 
 Deno.serve(async (req: Request) => {
-  const origin = req.headers.get("Origin");
-  if (origin && !origins.includes(origin)) return reply(req, { error: "Origin not allowed" }, 403);
+  // Handle preflight before application logic; actual POST still uses login validation,
+  // server-side throttling, and Supabase password verification.
   if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: cors(req) });
   if (req.method !== "POST") return reply(req, { error: "POST required" }, 405);
 
